@@ -2,8 +2,6 @@
 -- 0.1 @obi
 -- based on awake 2.6.0 @tehn
 --
--- (grid optional)
---
 -- E1 changes modes:
 -- PATTERN/SOUND
 --
@@ -36,12 +34,10 @@ local MusicUtil = require "musicutil"
 local options = {}
 options.OUT = {"audio", "midi", "audio + midi", "crow out 1+2", "crow ii JF"}
 
-local g = grid.connect()
-
 local running = true
 
 local mode = 1
-local mode_names = {"PATTERN","SOUND"}
+local mode_names = {"HOME", "PATTERN","SOUND"}
 
 local numbers = {0, 1}
 local numbers_built = false
@@ -146,10 +142,6 @@ function step()
                 end
             end
         end
-
-      if g then
-        gridredraw()
-      end
       redraw()
     else
     end
@@ -166,7 +158,7 @@ function start()
 end
 
 function reset()
-  current_number = 1
+  current_number = 2
   current_number_part = 1
 end
 
@@ -321,37 +313,17 @@ function init()
   norns.enc.sens(1,8)
 end
 
-function g.key(x, y, z)
-    --
-end
-
-function gridredraw()
-  g:all(0)
-
-  -- current number
-  local number_playing = numbers[current_number]
-  g:led(current_number_part, 1, 15)
-  local number_playing_led = tonumber(string.sub(number_playing, current_number_part, current_number_part))
-  if number_playing_led == 0 then
-      number_playing_led = 16 -- set end if 0
-  end
-  g:led(number_playing_led, 2, 15)
-
-  --
-  g:refresh()
-end
-
 function enc(n, delta)
   if n==1 then
     -- change mode for pattern/sound
-    mode = util.clamp(mode+delta,1,2)
-  elseif mode == 1 then --step
+    mode = util.clamp(mode+delta,1,3)
+  elseif mode == 2 then --step
     if n==2 then
       params:delta(main_params[main_sel], delta)
     elseif n==3 then
       params:delta(main_params[main_sel+1], delta)
     end
-  elseif mode == 2 then --loop
+  elseif mode == 3 then --loop
     if n==2 then
       params:delta(snd_params[snd_sel], delta)
     elseif n==3 then
@@ -368,13 +340,13 @@ function key(n,z)
     end
 
     if z==1 then
-        if mode == 1 then
+        if mode == 2 then
             if n==2 then
                 main_sel = util.clamp(main_sel - 2,1,NUM_MAIN_PARAMS-1)
             elseif n==3 then
                 main_sel = util.clamp(main_sel + 2,1,NUM_MAIN_PARAMS-1)
             end
-        elseif mode == 2 then
+        elseif mode == 3 then
             if n==2 then
                 snd_sel = util.clamp(snd_sel - 2,1,NUM_SND_PARAMS-1)
             elseif n==3 then
@@ -398,7 +370,7 @@ function redraw()
   screen.move(0,10)
   screen.text(mode_names[mode])
 
-  if mode==1 then
+  if mode==2 then
     screen.level(1)
     screen.move(0,30)
     screen.text(main_names[main_sel])
@@ -411,7 +383,7 @@ function redraw()
     screen.level(15)
     screen.move(0,60)
     screen.text(params:string(main_params[main_sel+1]))
-  elseif mode==2 then
+  elseif mode==3 then
     screen.level(1)
     screen.move(0,30)
     screen.text(snd_names[snd_sel])
@@ -432,6 +404,7 @@ function redraw()
   -- previous number
   local previous_number = numbers[current_number - 1]
   screen.text(previous_number)
+  screen.move(50, 42)
 
   -- current number
   screen.font_size(11)
