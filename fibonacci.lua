@@ -37,11 +37,11 @@ options.OUT = {"audio", "midi", "audio + midi", "crow out 1+2", "crow ii JF"}
 local running = true
 
 local mode = 1
-local mode_names = {"HOME", "PATTERN","SOUND"}
+local mode_names = {"", "PATTERN","SOUND"}
 
-local numbers = {0, 1}
+local numbers = {0, 1, 1}
 local numbers_built = false
-local current_number = 2
+local current_number = 3
 local current_number_part = 1
 
 local midi_devices
@@ -158,7 +158,7 @@ function start()
 end
 
 function reset()
-  current_number = 2
+  current_number = 3
   current_number_part = 1
 end
 
@@ -334,13 +334,14 @@ function enc(n, delta)
 end
 
 function key(n,z)
-    -- toggle on or off
-    if n==1 and z ==1 then
-        running = not running
-    end
-
     if z==1 then
-        if mode == 2 then
+        if mode == 1 then
+          if n==2 then
+            running = not running
+          elseif n==3 then
+            reset()
+          end
+        elseif mode == 2 then
             if n==2 then
                 main_sel = util.clamp(main_sel - 2,1,NUM_MAIN_PARAMS-1)
             elseif n==3 then
@@ -398,19 +399,27 @@ function redraw()
     screen.text(params:string(snd_params[snd_sel+1]))
   end
 
-  -- number display
-  screen.move(50,30)
+  -- previous numbers
+  screen.font_size(7)
+  screen.font_face(15)
+  screen.level(2)
+  screen.move(0,24)
+  screen.text(numbers[current_number - 2])
+  screen.level(15)
+  screen.move_rel(1, 0)
+  screen.text('+')
 
-  -- previous number
-  local previous_number = numbers[current_number - 1]
-  screen.text(previous_number)
-  screen.move(50, 42)
+  screen.move(0,34)
+  screen.level(2)
+  screen.text(numbers[current_number - 1])
 
   -- current number
-  screen.font_size(11)
+  screen.move(0, 46)
+  screen.font_size(9)
   screen.font_face(15)
 
   local number_playing = numbers[current_number]
+
   for i=1,string.len(number_playing) do
     local number_part_playing = tonumber(string.sub(number_playing, i, i))
     if i == current_number_part then
@@ -422,14 +431,29 @@ function redraw()
     end
     screen.text(number_part_playing)
 
+    if i < #numbers then
+      screen.move_rel(1, 0)
+    end
+
     -- new line?
     if i == 9 then
-        screen.move(50, 42)
+        --screen.move(50, 42)
     end
   end
-  screen.font_size(10)
 
+  for i=1,10 do
+    local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
+    local light = number_to_play == i and 15 or 2
+
+    draw_cube(100 + (i > 5 and 10 or 0), 0+((i > 5 and i - 5 or i)*10), light)
+  end
   screen.update()
+end
+
+function draw_cube(m, n, light)
+  screen.rect(m, n, 6, 6) -- (x,y,width,height)
+  screen.level(light)
+  screen.stroke()
 end
 
 function cleanup()
