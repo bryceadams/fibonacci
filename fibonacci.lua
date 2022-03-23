@@ -94,7 +94,7 @@ function build_numbers()
         local new_number = numbers[#numbers - 1] + numbers[#numbers]
         table.insert(numbers, new_number)
     until(string.len(new_number) >= 18)
-    
+
     numbers_built = true
 end
 
@@ -142,7 +142,7 @@ function step()
                 midi_device:note_on(note_num, 96, midi_channel)
                 table.insert(active_notes, note_num)
 
-                --local note_off_time = 
+                --local note_off_time =
                 -- Note off timeout
                 if params:get("note_length") < 4 then
                     notes_off_metro:start((60 / params:get("clock_tempo") / params:get("step_div")) * params:get("note_length") * 0.25, 1)
@@ -186,15 +186,15 @@ function midi_event(data)
       clock.transport.reset()
       clock.transport.start()
   elseif msg.type == "continue" then
-    if running then 
+    if running then
       clock.transport.stop()
-    else 
+    else
       clock.transport.start()
     end
-  end 
+  end
   if msg.type == "stop" then
     clock.transport.stop()
-  end 
+  end
 end
 
 function build_midi_device_list()
@@ -210,18 +210,18 @@ function init()
   for i = 1, #MusicUtil.SCALES do
     table.insert(scale_names, string.lower(MusicUtil.SCALES[i].name))
   end
-  
+
   -- start clock tempo
   params:set("clock_tempo", 100)
 
   build_midi_device_list()
-  
+
   build_numbers()
 
   notes_off_metro.event = all_notes_off
-  
+
   params:add_separator("FIB")
-  
+
   params:add_group("outs",3)
   params:add{type = "option", id = "out", name = "out",
     options = options.OUT,
@@ -236,21 +236,21 @@ function init()
   params:add{type = "option", id = "midi_device", name = "midi out device",
     options = midi_devices, default = 1,
     action = function(value) midi_device = midi.connect(value) end}
-  
+
   params:add{type = "number", id = "midi_out_channel", name = "midi out channel",
     min = 1, max = 16, default = 1,
     action = function(value)
       all_notes_off()
       midi_channel = value
     end}
-  
+
   params:add_group("step",8)
   params:add{type = "number", id = "step_div", name = "step division", min = 1, max = 16, default = 2}
 
   params:add{type = "option", id = "note_length", name = "note length",
     options = {"25%", "50%", "75%", "100%"},
     default = 4}
-  
+
   params:add{type = "option", id = "scale_mode", name = "scale mode",
     options = scale_names, default = 5,
     action = function() build_scale() end}
@@ -265,7 +265,7 @@ function init()
     action = function() start() end}
   params:add{type = "trigger", id = "reset", name = "reset",
     action = function() reset() end}
-  
+
   params:add_group("synth",6)
   cs_AMP = controlspec.new(0,1,'lin',0,0.5,'')
   params:add{type="control",id="amp",controlspec=cs_AMP,
@@ -286,13 +286,13 @@ function init()
   cs_GAIN = controlspec.new(0,4,'lin',0,1,'')
   params:add{type="control",id="gain",controlspec=cs_GAIN,
     action=function(x) engine.gain(x) end}
-  
+
   cs_PAN = controlspec.new(-1,1, 'lin',0,0,'')
   params:add{type="control",id="pan",controlspec=cs_PAN,
     action=function(x) engine.pan(x) end}
 
   hs.init()
-  
+
   params:default()
   midi_device.event = midi_event
 
@@ -316,7 +316,7 @@ function gridredraw()
       number_playing_led = 16 -- set end if 0
   end
   g:led(number_playing_led, 2, 15)
-  
+
   --
   g:refresh()
 end
@@ -346,7 +346,7 @@ function key(n,z)
     if n==1 and z ==1 then
         running = not running
     end
-    
+
     if z==1 then
         if mode == 1 then
             if n==2 then
@@ -412,7 +412,7 @@ function redraw()
   -- previous number
   local previous_number = numbers[current_number - 1]
   screen.text(number_part_playing)
-    
+
   -- current number
   screen.font_size(11)
   screen.font_face(15)
@@ -428,7 +428,7 @@ function redraw()
         --screen.font_face(5) -- normal
     end
     screen.text(number_part_playing)
-    
+
     -- new line?
     if i == 9 then
         screen.move(50, 42)
