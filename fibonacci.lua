@@ -45,7 +45,7 @@ local mode_names = {"PATTERN","SOUND"}
 
 local numbers = {0, 1}
 local numbers_built = false
-local current_number = 1
+local current_number = 2
 local current_number_part = 1
 
 local midi_devices
@@ -56,12 +56,9 @@ local scale_names = {}
 local notes = {}
 local active_notes = {}
 
-local edit_ch = 1
-local edit_pos = 1
-
 local main_sel = 1
-local main_names = {"bpm","mult","root","scale"}
-local main_params = {"clock_tempo","step_div","root_note","scale_mode"}
+local main_names = {"bpm","mult","root","scale","note length","probability"}
+local main_params = {"clock_tempo","step_div","root_note","scale_mode", "note_length", "probability"}
 local NUM_MAIN_PARAMS = #main_params
 
 local snd_sel = 1
@@ -113,9 +110,9 @@ function step()
             current_number_part = current_number_part + 1
         end
 
-        -- end of the line? start back at 1 (@todo or reverse mode?)
+        -- end of the line? reset (@todo reverse mode?)
         if current_number > #numbers then
-            current_number = 1
+            reset()
         end
 
         -- add 1 to the number to play as numbers start at 0
@@ -168,6 +165,11 @@ function start()
   running = true
 end
 
+function reset()
+  current_number = 1
+  current_number_part = 1
+end
+
 function clock.transport.start()
   start()
 end
@@ -215,12 +217,11 @@ function init()
   params:set("clock_tempo", 100)
 
   build_midi_device_list()
-
   build_numbers()
 
   notes_off_metro.event = all_notes_off
 
-  params:add_separator("FIB")
+  params:add_separator("fibonacci")
 
   params:add_group("outs",3)
   params:add{type = "option", id = "out", name = "out",
@@ -245,6 +246,12 @@ function init()
     end}
 
   params:add_group("step",8)
+
+  -- @todo
+  params:add{type = "option", id = "zero_behaviour", name = "zero behaviour",
+    options = {"none", "blank note", "octave shift"},
+    default = 1}
+
   params:add{type = "number", id = "step_div", name = "step division", min = 1, max = 16, default = 2}
 
   params:add{type = "option", id = "note_length", name = "note length",
@@ -265,6 +272,19 @@ function init()
     action = function() start() end}
   params:add{type = "trigger", id = "reset", name = "reset",
     action = function() reset() end}
+
+
+  params:add_group("synth",5)
+
+  params:add{type = "number", id = "loop_start", name = "loop start",
+    min = 0, max = #numbers, default = 0,
+    formatter = function(param)
+      return 0 and '-' or numbers[param]
+    end
+  }
+
+  params:add{type = "number", id = "loop_size", name = "loop size",
+    min = 1, max = 16, default = 8}
 
   params:add_group("synth",6)
   cs_AMP = controlspec.new(0,1,'lin',0,0.5,'')
@@ -411,7 +431,7 @@ function redraw()
 
   -- previous number
   local previous_number = numbers[current_number - 1]
-  screen.text(number_part_playing)
+  screen.text(previous_number)
 
   -- current number
   screen.font_size(11)
