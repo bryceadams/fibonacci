@@ -29,24 +29,24 @@
 
 engine.name = 'PolyPerc'
 
-hs = include('lib/halfsecond')
+local hs = include('lib/halfsecond')
 
-MusicUtil = require "musicutil"
+local MusicUtil = require "musicutil"
 
-options = {}
+local options = {}
 options.OUT = {"audio", "midi", "audio + midi", "crow out 1+2", "crow ii JF"}
 
-g = grid.connect()
+local g = grid.connect()
 
-running = true
+local running = true
 
-mode = 1
-mode_names = {"PATTERN","SOUND"}
+local mode = 1
+local mode_names = {"PATTERN","SOUND"}
 
-numbers = {0, 1}
-numbers_built = false
-current_number = 1
-current_number_part = 1
+local numbers = {0, 1}
+local numbers_built = false
+local current_number = 1
+local current_number_part = 1
 
 local midi_devices
 local midi_device
@@ -59,17 +59,17 @@ local active_notes = {}
 local edit_ch = 1
 local edit_pos = 1
 
-main_sel = 1
-main_names = {"bpm","mult","root","scale"}
-main_params = {"clock_tempo","step_div","root_note","scale_mode"}
-NUM_MAIN_PARAMS = #main_params
+local main_sel = 1
+local main_names = {"bpm","mult","root","scale"}
+local main_params = {"clock_tempo","step_div","root_note","scale_mode"}
+local NUM_MAIN_PARAMS = #main_params
 
-snd_sel = 1
-snd_names = {"cut","gain","pw","rel","fb","rate", "pan", "delay_pan"}
-snd_params = {"cutoff","gain","pw","release", "delay_feedback","delay_rate", "pan", "delay_pan"}
-NUM_SND_PARAMS = #snd_params
+local snd_sel = 1
+local snd_names = {"cut","gain","pw","rel","fb","rate", "pan", "delay_pan"}
+local snd_params = {"cutoff","gain","pw","release", "delay_feedback","delay_rate", "pan", "delay_pan"}
+local NUM_SND_PARAMS = #snd_params
 
-notes_off_metro = metro.init()
+local notes_off_metro = metro.init()
 
 function build_scale()
   notes = MusicUtil.generate_scale_of_length(params:get("root_note"), params:get("scale_mode"), 16)
