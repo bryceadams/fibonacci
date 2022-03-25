@@ -2,28 +2,20 @@
 -- 0.1 @obi
 -- based on awake 2.6.0 @tehn
 --
--- E1 changes modes:
--- PATTERN/SOUND
+-- HOME
+-- K2 pauses/plays
+-- K3 resets number
 --
--- K1 held is alt *
+-- SETTINGS
+-- E1 change page
+-- K2/K3 toggle settings
+-- E2 change first setting
+-- E3 change second setting
 --
--- STEP
--- E2/E3 move/change
--- K2 toggle *clear
--- K3 morph *rand
---
--- LOOP
+-- LOOP (NOT YET)
 -- E2/E3 loop length
 -- K2 reset position
 -- K3 jump position
---
--- SOUND
--- K2/K3 selects
--- E2/E3 changes
---
--- OPTION
--- *toggle
--- E2/E3 changes
 
 engine.name = 'PolyPerc'
 
