@@ -130,7 +130,7 @@ function step()
 
         local note_num = notes[number_to_play]
         local freq = MusicUtil.note_num_to_freq(note_num)
-        print(blank_note)
+
         -- Blank note and Trig Probablility
         if not blank_note and math.random(100) <= params:get("probability") then
             -- Audio engine out
