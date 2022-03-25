@@ -3,6 +3,7 @@
 -- based on awake 2.6.0 @tehn
 --
 -- HOME
+-- K1 toggls loop mode
 -- K2 pauses/plays
 -- K3 resets number
 --
@@ -13,9 +14,8 @@
 -- E3 change second setting
 --
 -- LOOP (NOT YET)
--- E2/E3 loop length
--- K2 reset position
--- K3 jump position
+-- E2 loop start
+-- E3 loop size
 
 engine.name = 'PolyPerc'
 
@@ -43,7 +43,8 @@ local midi_channel
 local scale_names = {}
 local notes = {}
 local active_notes = {}
-local octave_level = 0
+
+local loop_mode_on = false
 
 local main_sel = 1
 local main_names = {"bpm","mult","root","scale","random note length","play probability"}
@@ -100,7 +101,10 @@ function step()
         end
 
         -- end of the line? reset (@todo reverse mode?)
-        local end_of_the_line = params:get('loop_size') and params:get('loop_start') + params:get('loop_size') or #numbers
+        local end_of_the_line = #numbers
+        if loop_mode_on and params:get('loop_size') then
+          end_of_the_line = params:get('loop_start') + params:get('loop_size')
+        end
         if current_number > end_of_the_line then
             reset()
         end
@@ -338,13 +342,19 @@ function enc(n, delta)
   if n==1 then
     -- change mode for pattern/sound
     mode = util.clamp(mode+delta,1,3)
-  elseif mode == 2 then --step
+  elseif mode == 1 then -- loop
+    if n==2 then
+      params:delta('loop_start', delta)
+    elseif n==3 then
+      params:delta('loop_size', delta)
+    end
+  elseif mode == 2 then -- pattern
     if n==2 then
       params:delta(main_params[main_sel], delta)
     elseif n==3 then
       params:delta(main_params[main_sel+1], delta)
     end
-  elseif mode == 3 then --loop
+  elseif mode == 3 then --sound
     if n==2 then
       params:delta(snd_params[snd_sel], delta)
     elseif n==3 then
@@ -357,7 +367,9 @@ end
 function key(n,z)
     if z==1 then
         if mode == 1 then
-          if n==2 then
+          if n==1 then
+            loop_mode_on = true
+          elseif n==2 then
             running = not running
           elseif n==3 then
             reset()
