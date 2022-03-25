@@ -110,22 +110,12 @@ function step()
         local blank_note = false
         -- zero behaviour
         local zb = params:get("zero_behaviour")
-        if zb == 1 or zb == 2 then
-          if number_to_play == 0 then
-            number_to_play = 10
+        if number_to_play == 0 then
+          number_to_play = 10
 
-            if zb == 2 then
-              blank_note = true
-            end
+          if zb == 2 then
+            blank_note = true
           end
-        elseif zb == 3 then
-          -- not yet
-          print('octave level: '.. octave_level)
-
-          local octave_direction = octave_level == 1 and -1 or 1
-          octave_level = octave_level + octave_direction
-          number_to_play = number_to_play + (octave_direction * 12)
-          print(number_to_play)
         end
 
         local octaves = params:get('octaves')
@@ -267,7 +257,7 @@ function init()
 
   -- @todo
   params:add{type = "option", id = "zero_behaviour", name = "zero behaviour",
-    options = {"play ten", "blank note"}, -- "octave shift"},
+    options = {"play ten", "blank note"},
     default = 1}
 
   params:add{type = "number", id = "step_div", name = "step division", min = 1, max = 16, default = 2}
