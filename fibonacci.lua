@@ -100,7 +100,8 @@ function step()
         end
 
         -- end of the line? reset (@todo reverse mode?)
-        if current_number > #numbers then
+        local end_of_the_line = params:get('loop_size') and params:get('loop_start') + params:get('loop_size') or #numbers
+        if current_number > end_of_the_line then
             reset()
         end
 
@@ -174,7 +175,7 @@ function start()
 end
 
 function reset()
-  current_number = 3
+  current_number = params:get('loop_start') or 3
   current_number_part = 1
 end
 
@@ -288,20 +289,16 @@ function init()
   params:add{type = "trigger", id = "reset", name = "reset",
     action = function() reset() end}
 
-
-  params:add_group("synth",5)
+  params:add_group("loop",2)
 
   params:add{type = "number", id = "loop_start", name = "loop start",
-    min = 0, max = #numbers, default = 0,
-    formatter = function(param)
-      return 0 and '-' or numbers[param]
-    end
-  }
+    min = 3, max = #numbers, default = 3}
 
   params:add{type = "number", id = "loop_size", name = "loop size",
-    min = 1, max = 16, default = 8}
+    min = 1, max = 32, default = 8}
 
   params:add_group("synth",6)
+
   cs_AMP = controlspec.new(0,1,'lin',0,0.5,'')
   params:add{type="control",id="amp",controlspec=cs_AMP,
     action=function(x) engine.amp(x) end}
