@@ -46,7 +46,7 @@ local active_notes = {}
 local octave_level = 0
 
 local main_sel = 1
-local main_names = {"bpm","mult","root","scale","note length","probability"}
+local main_names = {"bpm","mult","root","scale","random note length","play probability"}
 local main_params = {"clock_tempo","step_div","root_note","scale_mode", "random_note_lengths", "probability"}
 local NUM_MAIN_PARAMS = #main_params
 
@@ -281,7 +281,8 @@ function init()
     min = 1, max = 4, default = 1,
     action = function() build_scale() end}
   params:add{type = "number", id = "probability", name = "probability",
-    min = 0, max = 100, default = 100}
+    min = 0, max = 100, default = 100,
+  formatter = function(param) return param:get() .. '%' end}
   params:add{type = "trigger", id = "stop", name = "stop",
     action = function() stop() reset() end}
   params:add{type = "trigger", id = "start", name = "start",
