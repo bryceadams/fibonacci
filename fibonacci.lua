@@ -131,10 +131,10 @@ function step()
         if not blank_note and math.random(100) <= params:get("probability") then
             -- Audio engine out
             if params:get("out") == 1 or params:get("out") == 3 then
-              if params:get('random_note_lengths') then
+              if params:get('random_note_lengths') == 2 then
                 -- use the golden ratio to determine if different length or not - use base attack for main one
-                if math.random(100, 200) / 100 > (8/5) then
-                  --engine.release(math.random(2, 30) / 10)
+                if math.random(1, 100) / 100 > 1/1.618 then
+                  engine.release(math.random(2, 30) / 10) -- random between 0.2s and 3s
                 end
               end
 
@@ -262,9 +262,9 @@ function init()
 
   params:add{type = "number", id = "step_div", name = "step division", min = 1, max = 16, default = 2}
 
-  params:add{type = "number", id = "random_note_lengths", name = "random note length",
-    min = 0, max = 4,
-    default = 0}
+  params:add{type = "option", id = "random_note_lengths", name = "random note lengths",
+    options = {"no", "yes"},
+    default = 1}
 
   params:add{type = "option", id = "midi_note_length", name = "midi note length",
     options = {"25%", "50%", "75%", "100%"},
