@@ -1,4 +1,4 @@
--- fib (awake)
+-- fibonacci
 -- 0.1 @obi
 -- based on awake 2.6.0 @tehn
 --
@@ -47,7 +47,7 @@ local octave_level = 0
 
 local main_sel = 1
 local main_names = {"bpm","mult","root","scale","note length","probability"}
-local main_params = {"clock_tempo","step_div","root_note","scale_mode", "note_length", "probability"}
+local main_params = {"clock_tempo","step_div","root_note","scale_mode", "random_note_lengths", "probability"}
 local NUM_MAIN_PARAMS = #main_params
 
 local snd_sel = 1
@@ -135,6 +135,8 @@ function step()
         if not blank_note and math.random(100) <= params:get("probability") then
             -- Audio engine out
             if params:get("out") == 1 or params:get("out") == 3 then
+              engine.release(4)
+              -- random_note_lengths
                 engine.hz(freq)
             elseif params:get("out") == 4 then
                 crow.output[1].volts = (note_num-60)/12
@@ -150,8 +152,8 @@ function step()
 
                 --local note_off_time =
                 -- Note off timeout
-                if params:get("note_length") < 4 then
-                    notes_off_metro:start((60 / params:get("clock_tempo") / params:get("step_div")) * params:get("note_length") * 0.25, 1)
+                if params:get("midi_note_length") < 4 then
+                    notes_off_metro:start((60 / params:get("clock_tempo") / params:get("step_div")) * params:get("midi_note_length") * 0.25, 1)
                 end
             end
         end
@@ -259,7 +261,11 @@ function init()
 
   params:add{type = "number", id = "step_div", name = "step division", min = 1, max = 16, default = 2}
 
-  params:add{type = "option", id = "note_length", name = "note length",
+  params:add{type = "number", id = "random_note_lengths", name = "random note length",
+    min = 0, max = 4,
+    default = 0}
+
+  params:add{type = "option", id = "midi_note_length", name = "midi note length",
     options = {"25%", "50%", "75%", "100%"},
     default = 4}
 
