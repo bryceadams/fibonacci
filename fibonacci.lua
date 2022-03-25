@@ -58,12 +58,10 @@ local NUM_SND_PARAMS = #snd_params
 local notes_off_metro = metro.init()
 
 function build_scale()
-  notes = MusicUtil.generate_scale(params:get("root_note"), params:get("scale_mode"), 4)
-  print(notes)
-  notes = MusicUtil.generate_scale_of_length(params:get("root_note"), params:get("scale_mode"), 16)
-  local num_to_add = 16 - #notes
+  notes = MusicUtil.generate_scale_of_length(params:get("root_note"), params:get("scale_mode"), 32) -- always all notes as may need higher numbers
+  local num_to_add = 32 - #notes
   for i = 1, num_to_add do
-    table.insert(notes, notes[16 - num_to_add])
+    table.insert(notes, notes[32 - num_to_add])
   end
 end
 
@@ -128,6 +126,12 @@ function step()
           octave_level = octave_level + octave_direction
           number_to_play = number_to_play + (octave_direction * 12)
           print(number_to_play)
+        end
+
+        local octaves = params:get('octaves')
+        if octaves > 1 then
+          -- not sure if should be 8 or different way to shift octave up randomly
+          number_to_play = number_to_play + (8 * math.random(0, octaves - 1))
         end
 
         local note_num = notes[number_to_play]
@@ -281,6 +285,9 @@ function init()
     action = function() build_scale() end}
   params:add{type = "number", id = "root_note", name = "root note",
     min = 0, max = 127, default = 60, formatter = function(param) return MusicUtil.note_num_to_name(param:get(), true) end,
+    action = function() build_scale() end}
+  params:add{type = "number", id = "octaves", name = "octaves",
+    min = 1, max = 4, default = 1,
     action = function() build_scale() end}
   params:add{type = "number", id = "probability", name = "probability",
     min = 0, max = 100, default = 100}
