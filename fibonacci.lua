@@ -297,7 +297,8 @@ function init()
   params:add_group("loop",2)
 
   params:add{type = "number", id = "loop_start", name = "loop start",
-    min = 3, max = #numbers, default = 3}
+    min = 3, max = #numbers, default = 3,
+    action = function() reset() end}
 
   params:add{type = "number", id = "loop_size", name = "loop size",
     min = 1, max = 32, default = 8}
@@ -343,10 +344,12 @@ function enc(n, delta)
     -- change mode for pattern/sound
     mode = util.clamp(mode+delta,1,3)
   elseif mode == 1 then -- loop
-    if n==2 then
-      params:delta('loop_start', delta)
-    elseif n==3 then
-      params:delta('loop_size', delta)
+    if loop_mode_on then
+      if n==2 then
+        params:delta('loop_start', delta)
+      elseif n==3 then
+        params:delta('loop_size', delta)
+      end
     end
   elseif mode == 2 then -- pattern
     if n==2 then
@@ -368,7 +371,7 @@ function key(n,z)
     if z==1 then
         if mode == 1 then
           if n==1 then
-            loop_mode_on = true
+            loop_mode_on = not loop_mode_on
           elseif n==2 then
             running = not running
           elseif n==3 then
@@ -493,6 +496,19 @@ function redraw()
       if i == 9 then
           --screen.move(50, 42)
       end
+    end
+
+    -- loop mode
+    if loop_mode_on then
+      screen.move(40, 60)
+      screen.level(10)
+      screen.font_size(9)
+      screen.text(numbers[params:get('loop_start')])
+      screen.text(' - ')
+
+      local limit = params:get('loop_start') + params:get('loop_size') 
+      limit = limit > #numbers and #numbers or limit
+      screen.text(numbers[limit])
     end
   end
 
