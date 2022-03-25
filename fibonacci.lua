@@ -135,8 +135,13 @@ function step()
         if not blank_note and math.random(100) <= params:get("probability") then
             -- Audio engine out
             if params:get("out") == 1 or params:get("out") == 3 then
-              engine.release(4)
-              -- random_note_lengths
+              if params:get('random_note_lengths') then
+                -- use the golden ratio to determine if different length or not - use base attack for main one
+                if Math.random(100, 200) / 100 > (8/5) then
+                  --engine.release(math.random(2, 30) / 10)
+                end
+              end
+
                 engine.hz(freq)
             elseif params:get("out") == 4 then
                 crow.output[1].volts = (note_num-60)/12
