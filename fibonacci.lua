@@ -58,6 +58,8 @@ local NUM_SND_PARAMS = #snd_params
 local notes_off_metro = metro.init()
 
 function build_scale()
+  notes = MusicUtil.generate_scale(params:get("root_note"), params:get("scale_mode"), 4)
+  print(notes)
   notes = MusicUtil.generate_scale_of_length(params:get("root_note"), params:get("scale_mode"), 16)
   local num_to_add = 16 - #notes
   for i = 1, num_to_add do
@@ -137,7 +139,7 @@ function step()
             if params:get("out") == 1 or params:get("out") == 3 then
               if params:get('random_note_lengths') then
                 -- use the golden ratio to determine if different length or not - use base attack for main one
-                if Math.random(100, 200) / 100 > (8/5) then
+                if math.random(100, 200) / 100 > (8/5) then
                   --engine.release(math.random(2, 30) / 10)
                 end
               end
