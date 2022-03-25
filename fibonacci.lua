@@ -51,6 +51,7 @@ local midi_channel
 local scale_names = {}
 local notes = {}
 local active_notes = {}
+local octave_level = 0
 
 local main_sel = 1
 local main_names = {"bpm","mult","root","scale","note length","probability"}
@@ -111,15 +112,35 @@ function step()
             reset()
         end
 
-        -- add 1 to the number to play as numbers start at 0
-        -- @todo octave jump mode so when 0 go up and down instead?
+        -- if 0 set to 10
         local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
-        local number_to_play = number_to_play + 1
+
+        local blank_note = false
+        -- zero behaviour
+        local zb = params:get("zero_behaviour")
+        if zb == 1 or zb == 2 then
+          if number_to_play == 0 then
+            number_to_play = 10
+
+            if zb == 2 then
+              blank_note = true
+            end
+          end
+        elseif zb == 3 then
+          -- not yet
+          print('octave level: '.. octave_level)
+
+          local octave_direction = octave_level == 1 and -1 or 1
+          octave_level = octave_level + octave_direction
+          number_to_play = number_to_play + (octave_direction * 12)
+          print(number_to_play)
+        end
 
         local note_num = notes[number_to_play]
         local freq = MusicUtil.note_num_to_freq(note_num)
-        -- Trig Probablility
-        if math.random(100) <= params:get("probability") then
+        print(blank_note)
+        -- Blank note and Trig Probablility
+        if not blank_note and math.random(100) <= params:get("probability") then
             -- Audio engine out
             if params:get("out") == 1 or params:get("out") == 3 then
                 engine.hz(freq)
@@ -241,7 +262,7 @@ function init()
 
   -- @todo
   params:add{type = "option", id = "zero_behaviour", name = "zero behaviour",
-    options = {"none", "blank note", "octave shift"},
+    options = {"play ten", "blank note"}, -- "octave shift"},
     default = 1}
 
   params:add{type = "number", id = "step_div", name = "step division", min = 1, max = 16, default = 2}
@@ -372,6 +393,15 @@ function redraw()
   screen.text(mode_names[mode])
 
   if mode==2 then
+    -- settings status dots
+    screen.move(0, 20)
+    screen.level(main_sel == 1 and 15 or 2)
+    screen.text('.')
+    screen.level(main_sel == 3 and 15 or 2)
+    screen.text('.')
+    screen.level(main_sel == 5 and 15 or 2)
+    screen.text('.')
+
     screen.level(1)
     screen.move(0,30)
     screen.text(main_names[main_sel])
@@ -385,6 +415,17 @@ function redraw()
     screen.move(0,60)
     screen.text(params:string(main_params[main_sel+1]))
   elseif mode==3 then
+    -- settings status dots
+    screen.move(0, 20)
+    screen.level(snd_sel == 1 and 15 or 2)
+    screen.text('.')
+    screen.level(snd_sel == 3 and 15 or 2)
+    screen.text('.')
+    screen.level(snd_sel == 5 and 15 or 2)
+    screen.text('.')
+    screen.level(snd_sel == 7 and 15 or 2)
+    screen.text('.')
+
     screen.level(1)
     screen.move(0,30)
     screen.text(snd_names[snd_sel])
@@ -400,51 +441,53 @@ function redraw()
   end
 
   -- previous numbers
-  screen.font_size(7)
-  screen.font_face(15)
-  screen.level(2)
-  screen.move(0,24)
-  screen.text(numbers[current_number - 2])
-  screen.level(15)
-  screen.move_rel(1, 0)
-  screen.text('+')
+  if mode == 1 then
+    screen.font_size(7)
+    screen.font_face(15)
+    screen.level(2)
+    screen.move(0,24)
+    screen.text(numbers[current_number - 2])
+    screen.level(15)
+    screen.move_rel(1, 0)
+    screen.text('+')
 
-  screen.move(0,34)
-  screen.level(2)
-  screen.text(numbers[current_number - 1])
+    screen.move(0,34)
+    screen.level(2)
+    screen.text(numbers[current_number - 1])
 
-  -- current number
-  screen.move(0, 46)
-  screen.font_size(9)
-  screen.font_face(15)
+    -- current number
+    screen.move(0, 46)
+    screen.font_size(9)
+    screen.font_face(15)
 
-  local number_playing = numbers[current_number]
+    local number_playing = numbers[current_number]
 
-  for i=1,string.len(number_playing) do
-    local number_part_playing = tonumber(string.sub(number_playing, i, i))
-    if i == current_number_part then
-        screen.level(15)
-        --screen.font_face(7) -- bold
-    else
-        screen.level(1)
-        --screen.font_face(5) -- normal
-    end
-    screen.text(number_part_playing)
+    for i=1,string.len(number_playing) do
+      local number_part_playing = tonumber(string.sub(number_playing, i, i))
+      if i == current_number_part then
+          screen.level(15)
+          --screen.font_face(7) -- bold
+      else
+          screen.level(1)
+          --screen.font_face(5) -- normal
+      end
+      screen.text(number_part_playing)
 
-    if i < #numbers then
-      screen.move_rel(1, 0)
-    end
+      if i < #numbers then
+        screen.move_rel(1, 0)
+      end
 
-    -- new line?
-    if i == 9 then
-        --screen.move(50, 42)
+      -- new line?
+      if i == 9 then
+          --screen.move(50, 42)
+      end
     end
   end
 
   for i=1,10 do
     local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
+    number_to_play = number_to_play == 0 and 10 or number_to_play
     local light = number_to_play == i and 15 or 2
-
     draw_cube(100 + (i > 5 and 10 or 0), 0+((i > 5 and i - 5 or i)*10), light)
   end
   screen.update()
