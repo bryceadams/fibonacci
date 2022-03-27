@@ -48,6 +48,7 @@ local notes = {}
 local active_notes = {}
 
 local loop_mode_on = false
+local playing_forward = true
 
 local main_sel = 1
 local main_names = {"bpm","mult","root","scale","octaves","zero behaviour", "play probability", "play duplicates"}
@@ -66,60 +67,6 @@ local random_sound_types = {"lead", "pad", "percussion"}
 function generate_synth_preset()
   local sound_type = random_sound_types[params:get("random_sound_type")]
   MollyThePoly.randomize_params(sound_type)
-end
-
-presets = {}
-
-function store_synth_preset()
-  
-  local param_names = {
-    "osc_wave_shape",
-    "pulse_width_mod",
-    "pulse_width_mod_src",
-    "freq_mod_lfo",
-    "freq_mod_env",
-    "glide",
-    "main_osc_level",
-    "sub_osc_level",
-    "sub_osc_detune",
-    "noise_level",
-    "hp_filter_cutoff",
-    "lp_filter_cutoff",
-    "lp_filter_resonance",
-    "lp_filter_type",
-    "lp_filter_env",
-    "lp_filter_mod_env",
-    "lp_filter_mod_lfo",
-    "lp_filter_tracking",
-    "lfo_freq",
-    "lfo_wave_shape",
-    "lfo_fade",
-    "env_1_attack",
-    "env_1_decay",
-    "env_1_sustain",
-    "env_1_release",
-    "env_2_attack",
-    "env_2_decay",
-    "env_2_sustain",
-    "env_2_release",
-    "amp",
-    "amp_mod",
-    "ring_mod_freq",
-    "ring_mod_fade",
-    "ring_mod_mix",
-    "chorus_mix",
-  }
-
-  for _, v in pairs(param_names) do
-    presets[v] = params:get(v)
-  end
-
-end
-
-local function switch_synth_preset()
-  for k, v in pairs(presets) do
-    params:set(k, v)
-  end
 end
 
 function build_scale()
@@ -158,7 +105,7 @@ end
 
 function step()
   while true do
-    -- step div and optional randomness
+    -- step div and @todo remove optional randomness?
     local step_div = params:get("step_div")
     if params:get('random_step_lengths') == 2 then
       -- use the golden ratio to determine if different length or not
@@ -169,25 +116,58 @@ function step()
     clock.sync(1/step_div)
 
     if running and numbers_built then
-        --all_notes_off()
+        -- PLAYING FORWARD
+        if playing_forward then
+          -- check end of number and tick if need to
+          if current_number_part >= string.len(numbers[current_number]) then
+              current_number = current_number + 1
+              current_number_part = 1
+          else
+              current_number_part = current_number_part + 1
+          end
 
-        -- check end of number and tick if need to
-        if current_number_part == string.len(numbers[current_number]) then
-            current_number = current_number + 1
-            current_number_part = 1
+          -- end of the line? reset
+          local end_of_the_line = #numbers
+          if loop_mode_on and params:get('loop_size') then
+            end_of_the_line = params:get('loop_start') + params:get('loop_size')
+          end
+          
+          if current_number > end_of_the_line then
+            -- only for loop mode
+             if loop_mode_on and params:get('loop_end') == 2 then
+              -- set to play backwards and change current number
+               playing_forward = false
+               current_number = current_number - 1
+               current_number_part = string.len(numbers[current_number]) - 1
+             else
+              reset()
+             end
+          end
+        -- PLAYING IN REVERSE
         else
-            current_number_part = current_number_part + 1
-        end
+          -- check end of number and tick if need to
+          if current_number_part == 1 then
+              current_number = current_number - 1
+              current_number_part = string.len(numbers[current_number])
+          else
+              current_number_part = current_number_part - 1
+          end
 
-        -- end of the line? reset (@todo reverse mode?)
-        local end_of_the_line = #numbers
-        if loop_mode_on and params:get('loop_size') then
-          end_of_the_line = params:get('loop_start') + params:get('loop_size')
-        end
-        if current_number > end_of_the_line then
+          -- start of the line? reset (@todo reverse mode?)
+          local start_of_the_line = 1
+          if loop_mode_on and params:get('loop_size') then
+            start_of_the_line = params:get('loop_start')
+          end
+
+          if current_number < start_of_the_line then
+            -- regardless of loop mode or loop end, reset
+            playing_forward = true
             reset()
+            current_number_part = 2 
+          end
         end
 
+        
         -- if 0 set to 10
         local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
 
@@ -259,6 +239,7 @@ end
 
 function stop()
   running = false
+  print.tab(active_notes)
   all_notes_off()
 end
 
@@ -378,6 +359,7 @@ function init()
   params:add{type = "number", id = "probability", name = "probability",
     min = 0, max = 100, default = 100,
   formatter = function(param) return param:get() .. '%' end}
+
   params:add{type = "trigger", id = "stop", name = "stop",
     action = function() stop() reset() end}
   params:add{type = "trigger", id = "start", name = "start",
@@ -385,7 +367,7 @@ function init()
   params:add{type = "trigger", id = "reset", name = "reset",
     action = function() reset() end}
 
-  params:add_group("loop",2)
+  params:add_group("loop",3)
 
   params:add{type = "number", id = "loop_start", name = "loop start",
     min = 3, max = #numbers, default = 3,
@@ -393,6 +375,9 @@ function init()
 
   params:add{type = "number", id = "loop_size", name = "loop size",
     min = 0, max = 32, default = 8}
+
+  params:add{type = "option", id = "loop_end", name = "loop end",
+    options = {"repeat", "reverse"}, default = 1}
 
   params:add_separator()
 
