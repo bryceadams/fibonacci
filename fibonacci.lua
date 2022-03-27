@@ -506,30 +506,47 @@ function redraw()
   screen.aa(0)
 
   if entry_mode then
-    screen.move(64,34)
+    screen.move(64,20)
     screen.font_size(20)
     screen.font_face(16)
     screen.level(15)
     screen.text_center('fibonacci')
     
-    screen.move(15, 47)
+    screen.move(15, 32)
     screen.font_size(8)
     screen.font_face(15)
     screen.text('@obi')
     
-    screen.move(90, 47)
+    screen.move(90, 32)
     screen.font_size(8)
     screen.font_face(15)
     screen.text('v1.0')
     
-    screen.move(15, 55)
     screen.level(3)
-    screen.rect(15, 55, 100, 5)
+    screen.rect(15, 40, 100, 5)
     screen.stroke()
     if entry_load_progress > 0 then
-      screen.rect(15, 55, entry_load_progress, 5)
+      screen.rect(15, 40, entry_load_progress, 5)
       screen.fill()
     end
+    
+    screen.move(15, 58)
+    screen.font_size(8)
+    screen.font_face(1)
+    screen.level(15)
+    screen.text("K1")
+    
+    screen.move(27, 58)
+    screen.level(2)
+    screen.text("LOOP")
+    
+    screen.move(75, 58)
+    screen.level(15)
+    screen.text_right("E1")
+  
+    screen.move(115, 58)
+    screen.level(2)
+    screen.text_right("SETTINGS")
   else
     -- defaults
     screen.font_size(8)
@@ -641,7 +658,7 @@ function redraw()
         limit = limit > #numbers and #numbers or limit
         screen.text(numbers[limit])
       else
-        screen.level(2)
+        screen.level(1)
         screen.text('K1 > LOOP')
       end
     end
