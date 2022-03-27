@@ -70,7 +70,7 @@ function generate_synth_preset()
 end
 
 function build_scale()
-  notes = MusicUtil.generate_scale_of_length(params:get("root_note"), params:get("scale_mode"), 32) -- always all notes as may need higher numbers
+  notes = MusicUtil.generate_scale_of_length(params:get("root_note"), params:get("scale_mode"), 48) -- always all notes as may need higher numbers
   local num_to_add = 32 - #notes
   for i = 1, num_to_add do
     table.insert(notes, notes[32 - num_to_add])
@@ -191,10 +191,11 @@ function step()
         local octaves = params:get('octaves')
         if octaves > 1 then
           -- not sure if should be 8 or different way to shift octave up randomly
-          number_to_play = number_to_play + (8 * math.random(0, octaves - 1))
+          number_to_play = util.clamp(number_to_play + (8 * math.random(0, octaves - 1)), 0, 48)
         end
 
-        local note_num = notes[number_to_play]
+        -- clamp to midi notes possible
+        local note_num = util.clamp(notes[number_to_play], 0, 127)
 
         -- either hold because of zero behav or if NOT play duplicates and active
         if hold_note or (params:get('play_duplicates') == 2 and active_notes[#active_notes] == note_num) then
