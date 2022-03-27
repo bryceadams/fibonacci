@@ -1,5 +1,5 @@
 -- fibonacci
--- 0.1 @obi
+-- 1.0 @obi
 -- inspirations and source @tehn @markwheeler
 --
 -- HOME
@@ -360,10 +360,11 @@ function init_params()
     default = 4}
 
   params:add{type = "option", id = "scale_mode", name = "scale mode",
-    options = options.SCALE_NAMES, default = 5,
+    options = options.SCALE_NAMES, default = 5, --default = math.random(1, #options.SCALE_NAMES),
     action = function() build_scale() end}
   params:add{type = "number", id = "root_note", name = "root note",
-    min = 0, max = 127, default = 60, formatter = function(param) return MusicUtil.note_num_to_name(param:get(), true) end,
+    min = 0, max = 127, default = 60, --default = math.random(50, 65), 
+    formatter = function(param) return MusicUtil.note_num_to_name(param:get(), true) end,
     action = function() build_scale() end}
   params:add{type = "number", id = "octaves", name = "octaves",
     min = 1, max = 4, default = 1,
@@ -542,13 +543,13 @@ function redraw()
     screen.font_size(7)
     screen.font_face(15)
     screen.level(2)
-    screen.move(0,15)
+    screen.move(0,12)
     screen.text(numbers[current_number - 2])
     screen.level(7)
     screen.move_rel(1, 0)
     screen.text('+')
 
-    screen.move(0,23)
+    screen.move(0,20)
     screen.level(2)
     screen.text(numbers[current_number - 1])
 
@@ -581,7 +582,7 @@ function redraw()
     end
 
     -- loop mode
-    screen.move(0, 60)
+    screen.move(0, 58)
     screen.font_size(7)
     if loop_mode_on then
       screen.level(10)
