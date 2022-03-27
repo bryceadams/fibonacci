@@ -56,8 +56,8 @@ local main_params = {"clock_tempo","step_div","root_note","scale_mode", "octaves
 local NUM_MAIN_PARAMS = #main_params
 
 local snd_sel = 1
-local snd_names = {"random sound type", "generate", "wave shape", "cut","sub osc level", "amp"} --"pw","rel","fb","rate", "pan", "delay_pan"}
-local snd_params = {"random_sound_type", "generate_preset", "osc_wave_shape", "lp_filter_cutoff","sub_osc_level", "amp"} --"pw","release", "delay_feedback","delay_rate", "pan", "delay_pan"}
+local snd_names = {"random sound type", "generate", "wave shape", "cut","sub osc level", "amp", "pulse width", "glide", "freq mod lfo", "freq mod env"}
+local snd_params = {"random_sound_type", "generate_preset", "osc_wave_shape", "lp_filter_cutoff","sub_osc_level", "amp", "pulse_width_mod", "glide", "freq_mod_lfo", "freq_mod_env"}
 local NUM_SND_PARAMS = #snd_params
 
 local notes_off_metro = metro.init()
@@ -239,7 +239,6 @@ end
 
 function stop()
   running = false
-  print.tab(active_notes)
   all_notes_off()
 end
 
@@ -303,6 +302,20 @@ function init()
 
   notes_off_metro.event = all_notes_off
 
+  init_params()
+  
+  hs.init()
+
+  params:default()
+  midi_device.event = midi_event
+
+  clock.run(step)
+
+  norns.enc.sens(1,8)
+end
+
+function init_params()
+
   params:add_separator("fibonacci")
 
   params:add_group("outs",3)
@@ -327,7 +340,7 @@ function init()
       midi_channel = value
     end}
 
-  params:add_group("step",8)
+  params:add_group("step",9)
 
   params:add{type = "option", id = "play_duplicates", name = "play duplicate numbers",
     options = {"yes", "no"},
@@ -360,13 +373,6 @@ function init()
     min = 0, max = 100, default = 100,
   formatter = function(param) return param:get() .. '%' end}
 
-  params:add{type = "trigger", id = "stop", name = "stop",
-    action = function() stop() reset() end}
-  params:add{type = "trigger", id = "start", name = "start",
-    action = function() start() end}
-  params:add{type = "trigger", id = "reset", name = "reset",
-    action = function() reset() end}
-
   params:add_group("loop",3)
 
   params:add{type = "number", id = "loop_start", name = "loop start",
@@ -379,8 +385,15 @@ function init()
   params:add{type = "option", id = "loop_end", name = "loop end",
     options = {"repeat", "reverse"}, default = 1}
 
-  params:add_separator()
+  params:add_separator("Sound")
 
+  params:add{type = "trigger", id = "stop", name = "stop",
+    action = function() stop() reset() end}
+  params:add{type = "trigger", id = "start", name = "start",
+    action = function() start() end}
+  params:add{type = "trigger", id = "reset", name = "reset",
+    action = function() reset() end}
+    
   params:add{type = "option", id = "random_sound_type", name = "random sound type",
     options = random_sound_types,
     default = 1
@@ -389,16 +402,11 @@ function init()
   params:add{type = "trigger", id = "generate_preset", name = "generate preset",
     action = function() generate_synth_preset() end}
   
+  params:add_separator("Molly")
+
   MollyThePoly.add_params()
-  
-  hs.init()
 
-  params:default()
-  midi_device.event = midi_event
-
-  clock.run(step)
-
-  norns.enc.sens(1,8)
+  params:add_separator()
 end
 
 function enc(n, delta)
@@ -438,7 +446,11 @@ function key(n,z)
               params:set('loop_start', current_number)
             end
           elseif n==2 then
-            running = not running
+            if running then
+              stop()
+            else
+              start()
+            end
           elseif n==3 then
             reset()
           end
