@@ -1,6 +1,6 @@
 -- fibonacci
 -- 0.1 @obi
--- based on awake 2.6.0 @tehn
+-- inspirations and source @tehn @markwheeler
 --
 -- HOME
 -- K1 toggls loop mode
@@ -17,7 +17,8 @@
 -- E2 loop start
 -- E3 loop size
 
-engine.name = 'PolyPerc'
+local MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
+engine.name = "MollyThePoly"
 
 local hs = include('lib/halfsecond')
 
@@ -25,6 +26,8 @@ local MusicUtil = require "musicutil"
 
 local options = {}
 options.OUT = {"audio", "midi", "audio + midi", "crow out 1+2", "crow ii JF"}
+options.STEP_LENGTH_NAMES = {"1 bar", "1/2", "1/3", "1/4", "1/6", "1/8", "1/12", "1/16", "1/24", "1/32"}
+options.STEP_LENGTH_DIVIDERS = {1, 2, 3, 4, 6, 8, 12, 16, 24, 32}
 
 local running = true
 
@@ -42,21 +45,82 @@ local midi_channel
 
 local scale_names = {}
 local notes = {}
-local active_notes = {}
+ active_notes = {}
 
 local loop_mode_on = false
 
 local main_sel = 1
-local main_names = {"bpm","mult","root","scale","random note length","play probability"}
-local main_params = {"clock_tempo","step_div","root_note","scale_mode", "random_note_lengths", "probability"}
+local main_names = {"bpm","mult","root","scale","random note length","play probability", "zero behaviour", "play duplicates"}
+local main_params = {"clock_tempo","step_div","root_note","scale_mode", "random_step_lengths", "probability", "zero_behaviour", "play_duplicates"}
 local NUM_MAIN_PARAMS = #main_params
 
 local snd_sel = 1
-local snd_names = {"cut","gain","pw","rel","fb","rate", "pan", "delay_pan"}
-local snd_params = {"cutoff","gain","pw","release", "delay_feedback","delay_rate", "pan", "delay_pan"}
+local snd_names = {"random sound type", "generate", "wave shape", "cut","amp"} --"pw","rel","fb","rate", "pan", "delay_pan"}
+local snd_params = {"random_sound_type", "generate_preset", "osc_wave_shape", "lp_filter_cutoff","amp"} --"pw","release", "delay_feedback","delay_rate", "pan", "delay_pan"}
 local NUM_SND_PARAMS = #snd_params
 
 local notes_off_metro = metro.init()
+
+local random_sound_types = {"lead", "pad", "percussion"}
+
+function generate_synth_preset()
+  local sound_type = random_sound_types[params:get("random_sound_type")]
+  MollyThePoly.randomize_params("sound_type")
+end
+
+presets = {}
+
+function store_synth_preset()
+  
+  local param_names = {
+    "osc_wave_shape",
+    "pulse_width_mod",
+    "pulse_width_mod_src",
+    "freq_mod_lfo",
+    "freq_mod_env",
+    "glide",
+    "main_osc_level",
+    "sub_osc_level",
+    "sub_osc_detune",
+    "noise_level",
+    "hp_filter_cutoff",
+    "lp_filter_cutoff",
+    "lp_filter_resonance",
+    "lp_filter_type",
+    "lp_filter_env",
+    "lp_filter_mod_env",
+    "lp_filter_mod_lfo",
+    "lp_filter_tracking",
+    "lfo_freq",
+    "lfo_wave_shape",
+    "lfo_fade",
+    "env_1_attack",
+    "env_1_decay",
+    "env_1_sustain",
+    "env_1_release",
+    "env_2_attack",
+    "env_2_decay",
+    "env_2_sustain",
+    "env_2_release",
+    "amp",
+    "amp_mod",
+    "ring_mod_freq",
+    "ring_mod_fade",
+    "ring_mod_mix",
+    "chorus_mix",
+  }
+
+  for _, v in pairs(param_names) do
+    presets[v] = params:get(v)
+  end
+
+end
+
+local function switch_synth_preset()
+  for k, v in pairs(presets) do
+    params:set(k, v)
+  end
+end
 
 function build_scale()
   notes = MusicUtil.generate_scale_of_length(params:get("root_note"), params:get("scale_mode"), 32) -- always all notes as may need higher numbers
@@ -67,6 +131,13 @@ function build_scale()
 end
 
 function all_notes_off()
+  -- Audio engine out
+  if params:get("out") == 1 then
+    for _, a in pairs(active_notes) do
+      engine.noteOff(a)
+    end
+  end
+
   if (params:get("out") == 2 or params:get("out") == 3) then
     for _, a in pairs(active_notes) do
       midi_device:note_off(a, nil, midi_channel)
@@ -87,10 +158,18 @@ end
 
 function step()
   while true do
+    -- step div and optional randomness
+    local step_div = params:get("step_div")
+    if params:get('random_step_lengths') == 2 then
+      -- use the golden ratio to determine if different length or not
+      if math.random(1, 100) / 100 > 1/1.618 then
+        step_div = math.random(1, 4)
+      end
+    end
+    clock.sync(1/step_div)
 
-    clock.sync(1/params:get("step_div"))
     if running and numbers_built then
-        all_notes_off()
+        --all_notes_off()
 
         -- check end of number and tick if need to
         if current_number_part == string.len(numbers[current_number]) then
@@ -113,6 +192,8 @@ function step()
         local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
 
         local blank_note = false
+        local hold_note = false
+
         -- zero behaviour
         local zb = params:get("zero_behaviour")
         if number_to_play == 0 then
@@ -120,6 +201,10 @@ function step()
 
           if zb == 2 then
             blank_note = true
+          end
+
+          if zb == 3 then
+            hold_note = true
           end
         end
 
@@ -130,40 +215,43 @@ function step()
         end
 
         local note_num = notes[number_to_play]
-        local freq = MusicUtil.note_num_to_freq(note_num)
 
-        -- Blank note and Trig Probablility
-        if not blank_note and math.random(100) <= params:get("probability") then
-            -- Audio engine out
-            if params:get("out") == 1 or params:get("out") == 3 then
-              if params:get('random_note_lengths') == 2 then
-                -- use the golden ratio to determine if different length or not - use base attack for main one
-                if math.random(1, 100) / 100 > 1/1.618 then
-                  engine.release(math.random(2, 30) / 10) -- random between 0.2s and 3s
-                end
+        -- either hold because of zero behav or if NOT play duplicates and active
+        if hold_note or (params:get('play_duplicates') == 2 and active_notes[#active_notes] == note_num) then
+          -- hodl!
+        else
+          all_notes_off()
+
+          local freq = MusicUtil.note_num_to_freq(note_num)
+
+          -- Blank note and Trig Probablility
+          if not blank_note and math.random(100) <= params:get("probability") then
+              -- Audio engine out
+              if params:get("out") == 1 or params:get("out") == 3 then
+                engine.noteOn(note_num, freq, 0.75)
+              elseif params:get("out") == 4 then
+                  crow.output[1].volts = (note_num-60)/12
+                  crow.output[2].execute()
+              elseif params:get("out") == 5 then
+                  crow.ii.jf.play_note((note_num-60)/12,5)
               end
 
-                engine.hz(freq)
-            elseif params:get("out") == 4 then
-                crow.output[1].volts = (note_num-60)/12
-                crow.output[2].execute()
-            elseif params:get("out") == 5 then
-                crow.ii.jf.play_note((note_num-60)/12,5)
-            end
+              -- MIDI out
+              if (params:get("out") == 2 or params:get("out") == 3) then
+                  midi_device:note_on(note_num, 96, midi_channel)
 
-            -- MIDI out
-            if (params:get("out") == 2 or params:get("out") == 3) then
-                midi_device:note_on(note_num, 96, midi_channel)
-                table.insert(active_notes, note_num)
+                  --local note_off_time =
+                  -- Note off timeout
+                  if params:get("midi_note_length") < 4 then
+                      notes_off_metro:start((60 / params:get("clock_tempo") / params:get("step_div")) * params:get("midi_note_length") * 0.25, 1)
+                  end
+              end
 
-                --local note_off_time =
-                -- Note off timeout
-                if params:get("midi_note_length") < 4 then
-                    notes_off_metro:start((60 / params:get("clock_tempo") / params:get("step_div")) * params:get("midi_note_length") * 0.25, 1)
-                end
-            end
+              table.insert(active_notes, note_num)
+          end
         end
-      redraw()
+
+        redraw()
     else
     end
   end
@@ -260,14 +348,17 @@ function init()
 
   params:add_group("step",8)
 
-  -- @todo
+  params:add{type = "option", id = "play_duplicates", name = "play duplicate numbers",
+    options = {"yes", "no"},
+    default = 1}
+
   params:add{type = "option", id = "zero_behaviour", name = "zero behaviour",
-    options = {"play ten", "blank note"},
+    options = {"play ten", "blank note", "hold note"},
     default = 1}
 
   params:add{type = "number", id = "step_div", name = "step division", min = 1, max = 16, default = 2}
 
-  params:add{type = "option", id = "random_note_lengths", name = "random note lengths",
+  params:add{type = "option", id = "random_step_lengths", name = "random note lengths",
     options = {"no", "yes"},
     default = 1}
 
@@ -303,32 +394,18 @@ function init()
   params:add{type = "number", id = "loop_size", name = "loop size",
     min = 1, max = 32, default = 8}
 
-  params:add_group("synth",6)
+  params:add_separator()
 
-  cs_AMP = controlspec.new(0,1,'lin',0,0.5,'')
-  params:add{type="control",id="amp",controlspec=cs_AMP,
-    action=function(x) engine.amp(x) end}
+  params:add{type = "option", id = "random_sound_type", name = "random sound type",
+    options = random_sound_types,
+    default = 1
+  }
 
-  cs_PW = controlspec.new(0,100,'lin',0,50,'%')
-  params:add{type="control",id="pw",controlspec=cs_PW,
-    action=function(x) engine.pw(x/100) end}
-
-  cs_REL = controlspec.new(0.1,3.2,'lin',0,1.2,'s')
-  params:add{type="control",id="release",controlspec=cs_REL,
-    action=function(x) engine.release(x) end}
-
-  cs_CUT = controlspec.new(50,5000,'exp',0,800,'hz')
-  params:add{type="control",id="cutoff",controlspec=cs_CUT,
-    action=function(x) engine.cutoff(x) end}
-
-  cs_GAIN = controlspec.new(0,4,'lin',0,1,'')
-  params:add{type="control",id="gain",controlspec=cs_GAIN,
-    action=function(x) engine.gain(x) end}
-
-  cs_PAN = controlspec.new(-1,1, 'lin',0,0,'')
-  params:add{type="control",id="pan",controlspec=cs_PAN,
-    action=function(x) engine.pan(x) end}
-
+  params:add{type = "trigger", id = "generate_preset", name = "generate preset",
+    action = function() generate_synth_preset() end}
+  
+  MollyThePoly.add_params()
+  
   hs.init()
 
   params:default()
@@ -372,6 +449,9 @@ function key(n,z)
         if mode == 1 then
           if n==1 then
             loop_mode_on = not loop_mode_on
+            if loop_mode_on then
+              params:set('loop_start', current_number)
+            end
           elseif n==2 then
             running = not running
           elseif n==3 then
@@ -385,7 +465,11 @@ function key(n,z)
             end
         elseif mode == 3 then
             if n==2 then
-                snd_sel = util.clamp(snd_sel - 2,1,NUM_SND_PARAMS-1)
+                if snd_sel == 1 then
+                  generate_synth_preset()
+                else
+                  snd_sel = util.clamp(snd_sel - 2,1,NUM_SND_PARAMS-1)
+                end
             elseif n==3 then
                 snd_sel = util.clamp(snd_sel + 2,1,NUM_SND_PARAMS-1)
             end
@@ -410,12 +494,12 @@ function redraw()
   if mode==2 then
     -- settings status dots
     screen.move(0, 20)
-    screen.level(main_sel == 1 and 15 or 2)
-    screen.text('.')
-    screen.level(main_sel == 3 and 15 or 2)
-    screen.text('.')
-    screen.level(main_sel == 5 and 15 or 2)
-    screen.text('.')
+    i = 1
+    repeat
+      screen.level(main_sel == i and 15 or 2)
+      screen.text('.')
+      i = i + 2
+    until i > #main_params
 
     screen.level(1)
     screen.move(0,30)
@@ -432,14 +516,12 @@ function redraw()
   elseif mode==3 then
     -- settings status dots
     screen.move(0, 20)
-    screen.level(snd_sel == 1 and 15 or 2)
-    screen.text('.')
-    screen.level(snd_sel == 3 and 15 or 2)
-    screen.text('.')
-    screen.level(snd_sel == 5 and 15 or 2)
-    screen.text('.')
-    screen.level(snd_sel == 7 and 15 or 2)
-    screen.text('.')
+    i = 1
+    repeat
+      screen.level(snd_sel == i and 15 or 2)
+      screen.text('.')
+      i = i + 2
+    until i > #snd_params
 
     screen.level(1)
     screen.move(0,30)
@@ -452,7 +534,11 @@ function redraw()
     screen.text(snd_names[snd_sel+1])
     screen.level(15)
     screen.move(0,60)
-    screen.text(params:string(snd_params[snd_sel+1]))
+    if snd_params[snd_sel+1] == 'generate_preset' then
+      screen.text('press k2')
+    else
+      screen.text(params:string(snd_params[snd_sel+1]))
+    end
   end
 
   -- previous numbers
@@ -500,7 +586,7 @@ function redraw()
 
     -- loop mode
     if loop_mode_on then
-      screen.move(40, 60)
+      screen.move(0, 60)
       screen.level(10)
       screen.font_size(9)
       screen.text(numbers[params:get('loop_start')])
