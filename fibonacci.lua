@@ -26,8 +26,6 @@ local MusicUtil = require "musicutil"
 
 local options = {}
 options.OUT = {"audio", "midi", "audio + midi", "crow out 1+2", "crow ii JF"}
-options.STEP_LENGTH_NAMES = {"1 bar", "1/2", "1/3", "1/4", "1/6", "1/8", "1/12", "1/16", "1/24", "1/32"}
-options.STEP_LENGTH_DIVIDERS = {1, 2, 3, 4, 6, 8, 12, 16, 24, 32}
 options.SCALE_NAMES = {}
 
 local running = true
@@ -71,9 +69,9 @@ end
 
 function build_scale()
   notes = MusicUtil.generate_scale_of_length(params:get("root_note"), params:get("scale_mode"), 48) -- always all notes as may need higher numbers
-  local num_to_add = 32 - #notes
+  local num_to_add = 48 - #notes
   for i = 1, num_to_add do
-    table.insert(notes, notes[32 - num_to_add])
+    table.insert(notes, notes[48 - num_to_add])
   end
 end
 
