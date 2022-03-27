@@ -3,7 +3,7 @@
 -- inspirations and source @tehn @markwheeler
 --
 -- HOME
--- K1 toggls loop mode
+-- K1 toggles loop mode
 -- K2 pauses/plays
 -- K3 resets number
 --
@@ -13,7 +13,7 @@
 -- E2 change first setting
 -- E3 change second setting
 --
--- LOOP (NOT YET)
+-- LOOP MODE
 -- E2 loop start
 -- E3 loop size
 
