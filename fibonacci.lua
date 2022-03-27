@@ -28,6 +28,7 @@ local options = {}
 options.OUT = {"audio", "midi", "audio + midi", "crow out 1+2", "crow ii JF"}
 options.STEP_LENGTH_NAMES = {"1 bar", "1/2", "1/3", "1/4", "1/6", "1/8", "1/12", "1/16", "1/24", "1/32"}
 options.STEP_LENGTH_DIVIDERS = {1, 2, 3, 4, 6, 8, 12, 16, 24, 32}
+options.SCALE_NAMES = {}
 
 local running = true
 
@@ -43,20 +44,19 @@ local midi_devices
 local midi_device
 local midi_channel
 
-local scale_names = {}
 local notes = {}
- active_notes = {}
+local active_notes = {}
 
 local loop_mode_on = false
 
 local main_sel = 1
-local main_names = {"bpm","mult","root","scale","random note length","play probability", "zero behaviour", "play duplicates"}
-local main_params = {"clock_tempo","step_div","root_note","scale_mode", "random_step_lengths", "probability", "zero_behaviour", "play_duplicates"}
+local main_names = {"bpm","mult","root","scale","octaves","zero behaviour", "play probability", "play duplicates"}
+local main_params = {"clock_tempo","step_div","root_note","scale_mode", "octaves", "zero_behaviour", "probability", "play_duplicates"}
 local NUM_MAIN_PARAMS = #main_params
 
 local snd_sel = 1
-local snd_names = {"random sound type", "generate", "wave shape", "cut","amp"} --"pw","rel","fb","rate", "pan", "delay_pan"}
-local snd_params = {"random_sound_type", "generate_preset", "osc_wave_shape", "lp_filter_cutoff","amp"} --"pw","release", "delay_feedback","delay_rate", "pan", "delay_pan"}
+local snd_names = {"random sound type", "generate", "wave shape", "cut","sub osc level", "amp"} --"pw","rel","fb","rate", "pan", "delay_pan"}
+local snd_params = {"random_sound_type", "generate_preset", "osc_wave_shape", "lp_filter_cutoff","sub_osc_level", "amp"} --"pw","release", "delay_feedback","delay_rate", "pan", "delay_pan"}
 local NUM_SND_PARAMS = #snd_params
 
 local notes_off_metro = metro.init()
@@ -65,7 +65,7 @@ local random_sound_types = {"lead", "pad", "percussion"}
 
 function generate_synth_preset()
   local sound_type = random_sound_types[params:get("random_sound_type")]
-  MollyThePoly.randomize_params("sound_type")
+  MollyThePoly.randomize_params(sound_type)
 end
 
 presets = {}
@@ -267,7 +267,7 @@ function start()
 end
 
 function reset()
-  current_number = params:get('loop_start') or 3
+  current_number = loop_mode_on and params:get('loop_start') or 3
   current_number_part = 1
 end
 
@@ -311,7 +311,7 @@ end
 
 function init()
   for i = 1, #MusicUtil.SCALES do
-    table.insert(scale_names, string.lower(MusicUtil.SCALES[i].name))
+    table.insert(options.SCALE_NAMES, string.lower(MusicUtil.SCALES[i].name))
   end
 
   -- start clock tempo
@@ -367,7 +367,7 @@ function init()
     default = 4}
 
   params:add{type = "option", id = "scale_mode", name = "scale mode",
-    options = scale_names, default = 5,
+    options = options.SCALE_NAMES, default = 5,
     action = function() build_scale() end}
   params:add{type = "number", id = "root_note", name = "root note",
     min = 0, max = 127, default = 60, formatter = function(param) return MusicUtil.note_num_to_name(param:get(), true) end,
@@ -392,7 +392,7 @@ function init()
     action = function() reset() end}
 
   params:add{type = "number", id = "loop_size", name = "loop size",
-    min = 1, max = 32, default = 8}
+    min = 0, max = 32, default = 8}
 
   params:add_separator()
 
@@ -546,18 +546,18 @@ function redraw()
     screen.font_size(7)
     screen.font_face(15)
     screen.level(2)
-    screen.move(0,24)
+    screen.move(0,15)
     screen.text(numbers[current_number - 2])
-    screen.level(15)
+    screen.level(7)
     screen.move_rel(1, 0)
     screen.text('+')
 
-    screen.move(0,34)
+    screen.move(0,23)
     screen.level(2)
     screen.text(numbers[current_number - 1])
 
     -- current number
-    screen.move(0, 46)
+    screen.move(0, 37)
     screen.font_size(9)
     screen.font_face(15)
 
@@ -585,16 +585,19 @@ function redraw()
     end
 
     -- loop mode
+    screen.move(0, 60)
+    screen.font_size(7)
     if loop_mode_on then
-      screen.move(0, 60)
       screen.level(10)
-      screen.font_size(9)
       screen.text(numbers[params:get('loop_start')])
-      screen.text(' - ')
+      screen.text(' -')
 
       local limit = params:get('loop_start') + params:get('loop_size') 
       limit = limit > #numbers and #numbers or limit
       screen.text(numbers[limit])
+    else
+      screen.level(2)
+      screen.text('K1 > LOOP')
     end
   end
 
