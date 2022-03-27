@@ -311,7 +311,7 @@ function init()
 
   clock.run(step)
 
-  norns.enc.sens(1,8)
+  norns.enc.sens(1,12)
 end
 
 function init_params()
