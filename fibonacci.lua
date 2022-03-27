@@ -48,6 +48,10 @@ local active_notes = {}
 local loop_mode_on = false
 local playing_forward = true
 
+local entry_mode = true
+local entry_load_progress = 0
+local entry_clock = false
+
 local main_sel = 1
 local main_names = {"bpm","mult","root","scale","octaves","zero behaviour", "play probability", "play duplicates"}
 local main_params = {"clock_tempo","step_div","root_note","scale_mode", "octaves", "zero_behaviour", "probability", "play_duplicates"}
@@ -103,6 +107,12 @@ end
 
 function step()
   while true do
+    -- turn off entry clock
+    if entry_load_progress > 100 and entry_clock then
+      clock.cancel(entry_clock)
+      entry_clock = false
+    end
+
     -- step div and @todo remove optional randomness?
     local step_div = params:get("step_div")
     if params:get('random_step_lengths') == 2 then
@@ -113,7 +123,7 @@ function step()
     end
     clock.sync(1/step_div)
 
-    if running and numbers_built then
+    if not entry_mode and running and numbers_built then
         -- PLAYING FORWARD
         if playing_forward then
           -- check end of number and tick if need to
@@ -308,9 +318,23 @@ function init()
   params:default()
   midi_device.event = midi_event
 
+  norns.enc.sens(1,12)
   clock.run(step)
 
-  norns.enc.sens(1,12)
+  -- entry load
+  entry_clock = clock.run(entry_step)
+end
+
+function entry_step()
+  while true do
+    entry_load_progress = entry_load_progress + 1
+    clock.sleep(math.random(1,50) / 1000)
+    redraw()
+
+    if entry_load_progress == 100 then
+      entry_mode = false
+    end
+  end
 end
 
 function init_params()
@@ -481,129 +505,155 @@ function redraw()
   screen.line_width(1)
   screen.aa(0)
 
-  -- defaults
-  screen.font_size(8)
-  screen.font_face(1)
-  screen.level(4)
-  screen.move(0,10)
-  screen.text(mode_names[mode])
-
-  if mode==2 then
-    -- settings status dots
-    screen.move(0, 20)
-    i = 1
-    repeat
-      screen.level(main_sel == i and 15 or 2)
-      screen.text('.')
-      i = i + 2
-    until i > #main_params
-
-    screen.level(1)
-    screen.move(0,30)
-    screen.text(main_names[main_sel])
+  if entry_mode then
+    screen.move(64,34)
+    screen.font_size(20)
+    screen.font_face(16)
     screen.level(15)
-    screen.move(0,40)
-    screen.text(params:string(main_params[main_sel]))
-    screen.level(1)
-    screen.move(0,50)
-    screen.text(main_names[main_sel+1])
-    screen.level(15)
-    screen.move(0,60)
-    screen.text(params:string(main_params[main_sel+1]))
-  elseif mode==3 then
-    -- settings status dots
-    screen.move(0, 20)
-    i = 1
-    repeat
-      screen.level(snd_sel == i and 15 or 2)
-      screen.text('.')
-      i = i + 2
-    until i > #snd_params
-
-    screen.level(1)
-    screen.move(0,30)
-    screen.text(snd_names[snd_sel])
-    screen.level(15)
-    screen.move(0,40)
-    screen.text(params:string(snd_params[snd_sel]))
-    screen.level(1)
-    screen.move(0,50)
-    screen.text(snd_names[snd_sel+1])
-    screen.level(15)
-    screen.move(0,60)
-    if snd_params[snd_sel+1] == 'generate_preset' then
-      screen.text('press k2')
-    else
-      screen.text(params:string(snd_params[snd_sel+1]))
+    screen.text_center('fibonacci')
+    
+    screen.move(15, 47)
+    screen.font_size(8)
+    screen.font_face(15)
+    screen.text('@obi')
+    
+    screen.move(90, 47)
+    screen.font_size(8)
+    screen.font_face(15)
+    screen.text('v1.0')
+    
+    screen.move(15, 55)
+    screen.level(3)
+    screen.rect(15, 55, 100, 5)
+    screen.stroke()
+    if entry_load_progress > 0 then
+      screen.rect(15, 55, entry_load_progress, 5)
+      screen.fill()
     end
-  end
+  else
+    -- defaults
+    screen.font_size(8)
+    screen.font_face(1)
+    screen.level(4)
+    screen.move(0,10)
+    screen.text(mode_names[mode])
 
-  -- previous numbers
-  if mode == 1 then
-    screen.font_size(7)
-    screen.font_face(15)
-    screen.level(2)
-    screen.move(0,12)
-    screen.text(numbers[current_number - 2])
-    screen.level(7)
-    screen.move_rel(1, 0)
-    screen.text('+')
+    if mode==2 then
+      -- settings status dots
+      screen.move(0, 20)
+      i = 1
+      repeat
+        screen.level(main_sel == i and 15 or 2)
+        screen.text('.')
+        i = i + 2
+      until i > #main_params
 
-    screen.move(0,20)
-    screen.level(2)
-    screen.text(numbers[current_number - 1])
+      screen.level(1)
+      screen.move(0,30)
+      screen.text(main_names[main_sel])
+      screen.level(15)
+      screen.move(0,40)
+      screen.text(params:string(main_params[main_sel]))
+      screen.level(1)
+      screen.move(0,50)
+      screen.text(main_names[main_sel+1])
+      screen.level(15)
+      screen.move(0,60)
+      screen.text(params:string(main_params[main_sel+1]))
+    elseif mode==3 then
+      -- settings status dots
+      screen.move(0, 20)
+      i = 1
+      repeat
+        screen.level(snd_sel == i and 15 or 2)
+        screen.text('.')
+        i = i + 2
+      until i > #snd_params
 
-    -- current number
-    screen.move(0, 37)
-    screen.font_size(9)
-    screen.font_face(15)
-
-    local number_playing = numbers[current_number]
-
-    for i=1,string.len(number_playing) do
-      local number_part_playing = tonumber(string.sub(number_playing, i, i))
-      if i == current_number_part then
-          screen.level(15)
-          --screen.font_face(7) -- bold
+      screen.level(1)
+      screen.move(0,30)
+      screen.text(snd_names[snd_sel])
+      screen.level(15)
+      screen.move(0,40)
+      screen.text(params:string(snd_params[snd_sel]))
+      screen.level(1)
+      screen.move(0,50)
+      screen.text(snd_names[snd_sel+1])
+      screen.level(15)
+      screen.move(0,60)
+      if snd_params[snd_sel+1] == 'generate_preset' then
+        screen.text('press k2')
       else
-          screen.level(1)
-          --screen.font_face(5) -- normal
-      end
-      screen.text(number_part_playing)
-
-      if i < #numbers then
-        screen.move_rel(1, 0)
-      end
-
-      -- new line?
-      if i == 9 then
-          --screen.move(50, 42)
+        screen.text(params:string(snd_params[snd_sel+1]))
       end
     end
 
-    -- loop mode
-    screen.move(0, 58)
-    screen.font_size(7)
-    if loop_mode_on then
-      screen.level(10)
-      screen.text(numbers[params:get('loop_start')])
-      screen.text(' -')
-
-      local limit = params:get('loop_start') + params:get('loop_size') 
-      limit = limit > #numbers and #numbers or limit
-      screen.text(numbers[limit])
-    else
+    -- previous numbers
+    if mode == 1 then
+      screen.font_size(7)
+      screen.font_face(7)
       screen.level(2)
-      screen.text('K1 > LOOP')
+      screen.move(0,12)
+      screen.text(numbers[current_number - 2])
+      screen.level(7)
+      screen.move_rel(1, 0)
+      screen.text('+')
+
+      screen.move(0,20)
+      screen.level(2)
+      screen.text(numbers[current_number - 1])
+
+      -- current number
+      screen.move(0, 37)
+      screen.font_size(9)
+      screen.font_face(7)
+
+      local number_playing = numbers[current_number]
+
+      for i=1,string.len(number_playing) do
+        local number_part_playing = tonumber(string.sub(number_playing, i, i))
+        if i == current_number_part then
+            screen.level(15)
+        else
+            screen.level(1)
+        end
+        screen.text(number_part_playing)
+
+        if i < #numbers then
+          screen.move_rel(1, 0)
+        end
+
+        -- new line?
+        if i == 9 then
+            --screen.move(50, 42)
+        end
+      end
+
+      -- loop mode
+      screen.move(0, 58)
+      screen.font_size(7)
+      if loop_mode_on then
+        screen.level(5)
+        screen.text(numbers[params:get('loop_start')])
+        screen.text(' -')
+
+        local limit = params:get('loop_start') + params:get('loop_size') 
+        limit = limit > #numbers and #numbers or limit
+        screen.text(numbers[limit])
+      else
+        screen.level(2)
+        screen.text('K1 > LOOP')
+      end
+    end
+
+    for i=1,10 do
+      local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
+      number_to_play = number_to_play == 0 and 10 or number_to_play
+      local light = number_to_play == i and 15 or 2
+      draw_cube(100 + (i > 5 and 10 or 0), 0+((i > 5 and i - 5 or i)*10), light)
     end
   end
 
-  for i=1,10 do
-    local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
-    number_to_play = number_to_play == 0 and 10 or number_to_play
-    local light = number_to_play == i and 15 or 2
-    draw_cube(100 + (i > 5 and 10 or 0), 0+((i > 5 and i - 5 or i)*10), light)
-  end
   screen.update()
 end
 
