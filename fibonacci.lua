@@ -1,5 +1,5 @@
 -- fibonacci
--- 1.0 @obi
+-- 0.5 @obi
 -- inspirations and source @tehn @markwheeler
 --
 -- HOME
@@ -520,7 +520,7 @@ function redraw()
     screen.move(90, 32)
     screen.font_size(8)
     screen.font_face(15)
-    screen.text('v1.0')
+    screen.text('v0.5')
     
     screen.level(3)
     screen.rect(15, 40, 100, 5)
