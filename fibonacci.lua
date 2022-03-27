@@ -658,8 +658,14 @@ function redraw()
         limit = limit > #numbers and #numbers or limit
         screen.text(numbers[limit])
       else
+        --[[
+        screen.font_face(1)
+        screen.font_size(8)
+        screen.level(15)
+        screen.text("K1")
         screen.level(1)
-        screen.text('K1 > LOOP')
+        screen.text(" HOLD TO LOOP")
+        ]]--
       end
     end
 
