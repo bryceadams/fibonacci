@@ -712,11 +712,9 @@ function redraw()
       local line_number = 1
       
       
-       lines_to_write = {{}}
+      local lines_to_write = {{}}
       for i=1,current_number-1 do
-        
-        
-        
+        -- operator based on it being the second last number
         local operator = i < current_number-1 and '+' or '='
         local text_to_write = numbers[i]..operator
         
@@ -732,33 +730,38 @@ function redraw()
           text_width = 0
           line_number = line_number + 1
           lines_to_write[line_number] = {}
-          --screen.move(0, 10*line_number)
         end
         
         table.insert(lines_to_write[line_number], text_to_write)
-        
-        --screen.text(text_to_write)
       end
       
-      if #lines_to_write > 6 then
+      -- handle paginating if lots of lines
+      if #lines_to_write > 5 then
         for i=1,#lines_to_write do
-          lines_to_write[i] = lines_to_write[#lines_to_write-6+i]
+          lines_to_write[i] = lines_to_write[#lines_to_write-5+i]
         end
       end
     
-      for i=1,util.clamp(#lines_to_write, 1, 6) do
+      -- go through each line
+      for i=1,util.clamp(#lines_to_write, 1, 5) do
         -- move new line
-        
-        --local y = i+10*i
-        --print(i)
         screen.move(0, 10*i)
+        last_line_total = 0
         for n=1,#lines_to_write[i] do
+          -- write each number in the current line
           screen.text(lines_to_write[i][n])
+          last_line_total = last_line_total + screen.text_extents(lines_to_write[i][n])
         end
       end
       
+      -- if current number pushes over screen width go new line
+      
+      if (last_line_total + screen.text_extents(numbers[current_number])) > 120 then
+        screen.move(0, util.clamp(#lines_to_write*10, 10, 50) + 10)
+      end
+      
+      -- output current number with highlighting
       local number_playing = numbers[current_number]
-
       for i=1,string.len(number_playing) do
         local number_part_playing = tonumber(string.sub(number_playing, i, i))
         if i == current_number_part then
