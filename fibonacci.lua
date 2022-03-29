@@ -180,6 +180,7 @@ function step()
       end
     end
     clock.sync(1/step_div)
+    --viewport.frame = viewport.frame + 1
 
     if not entry_mode and running and numbers_built then
         -- PLAYING FORWARD
@@ -273,6 +274,8 @@ function step()
 
           -- Blank note and Trig Probablility
           if not blank_note and math.random(100) <= params:get("probability") then
+              viewport.frame = viewport.frame + 1
+    
               -- Audio engine out
               if params:get("out") == 1 or params:get("out") == 3 then
                 engine.noteOn(note_num, freq, 0.75)
@@ -384,15 +387,6 @@ function init()
 
   -- store initial preset
   store_synth_preset()
-  
-  -- powers cool wave
-  re = metro.init()
-  re.time = 1.0 / util.clamp(tonumber(params:get('clock_tempo') / 5), 15, 20)
-  re.event = function()
-    viewport.frame = viewport.frame + 1
-    redraw()
-  end
-  re:start()
 end
 
 function entry_step()
