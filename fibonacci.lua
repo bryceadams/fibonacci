@@ -6,16 +6,18 @@
 -- K1 toggles loop mode
 -- K2 pauses/plays
 -- K3 resets number
+-- E2 travel through synth presets
+-- E3 control sub osc
+--
+-- LOOP MODE
+-- E2 loop start
+-- E3 loop size
 --
 -- SETTINGS
 -- E1 change page
 -- K2/K3 toggle settings
 -- E2 change first setting
 -- E3 change second setting
---
--- LOOP MODE
--- E2 loop start
--- E3 loop size
 
 local MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
 engine.name = "MollyThePoly"
@@ -65,10 +67,64 @@ local NUM_SND_PARAMS = #snd_params
 local notes_off_metro = metro.init()
 
 local random_sound_types = {"lead", "pad", "percussion"}
+local current_preset = 1
+ synth_presets = {}
 
-function generate_synth_preset()
-  local sound_type = random_sound_types[params:get("random_sound_type")]
+function generate_synth_preset(t)
+  local sound_type = t or random_sound_types[params:get("random_sound_type")]
   MollyThePoly.randomize_params(sound_type)
+end
+
+local function store_synth_preset()
+  local param_names = {
+    "osc_wave_shape",
+    "pulse_width_mod",
+    "pulse_width_mod_src",
+    "freq_mod_lfo",
+    "freq_mod_env",
+    "glide",
+    "main_osc_level",
+    "sub_osc_level",
+    "sub_osc_detune",
+    "noise_level",
+    "hp_filter_cutoff",
+    "lp_filter_cutoff",
+    "lp_filter_resonance",
+    "lp_filter_type",
+    "lp_filter_env",
+    "lp_filter_mod_env",
+    "lp_filter_mod_lfo",
+    "lp_filter_tracking",
+    "lfo_freq",
+    "lfo_wave_shape",
+    "lfo_fade",
+    "env_1_attack",
+    "env_1_decay",
+    "env_1_sustain",
+    "env_1_release",
+    "env_2_attack",
+    "env_2_decay",
+    "env_2_sustain",
+    "env_2_release",
+    "amp",
+    "amp_mod",
+    "ring_mod_freq",
+    "ring_mod_fade",
+    "ring_mod_mix",
+    "chorus_mix",
+  }
+  
+  synth_presets[current_preset] = {}
+  synth_presets[current_preset].preset = {}
+  for _, v in pairs(param_names) do
+    synth_presets[current_preset].preset[v] = params:get(v)
+  end
+end
+
+local function switch_synth_preset()
+  for k, v in pairs(synth_presets[current_preset].preset) do
+    params:set(k, v)
+  end
 end
 
 function build_scale()
@@ -323,6 +379,9 @@ function init()
 
   -- entry load
   entry_clock = clock.run(entry_step)
+
+  -- store initial preset
+  store_synth_preset()
 end
 
 function entry_step()
@@ -443,6 +502,23 @@ function enc(n, delta)
         params:delta('loop_start', delta)
       elseif n==3 then
         params:delta('loop_size', delta)
+      end
+    else
+      if n==2 then
+        current_preset = util.clamp(current_preset + delta, 1, 256)
+        if synth_presets[current_preset] then 
+          switch_synth_preset()
+        else
+          -- percussion every so often (and pads?)
+          if math.random(1,10) > 8 then
+            generate_synth_preset('percussion')
+          else
+            generate_synth_preset()
+          end
+          store_synth_preset()
+        end
+      elseif n==3 then
+        params:delta('sub_osc_level', delta)
       end
     end
   elseif mode == 2 then -- pattern
