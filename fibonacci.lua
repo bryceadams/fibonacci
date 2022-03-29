@@ -1,5 +1,5 @@
 -- fibonacci
--- 0.5 @obi
+-- v0.8 @obi
 -- inspirations and source @tehn @markwheeler
 --
 -- HOME
