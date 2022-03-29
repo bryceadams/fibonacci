@@ -71,6 +71,7 @@ local current_preset = 1
 local synth_presets = {}
 
 local viewport = { width = 128, height = 64, frame = 0 }
+ wavetimer = false
 
 function generate_synth_preset(t)
   local sound_type = t or random_sound_types[params:get("random_sound_type")]
@@ -180,7 +181,6 @@ function step()
       end
     end
     clock.sync(1/step_div)
-    --viewport.frame = viewport.frame + 1
 
     if not entry_mode and running and numbers_built then
         -- PLAYING FORWARD
@@ -274,8 +274,6 @@ function step()
 
           -- Blank note and Trig Probablility
           if not blank_note and math.random(100) <= params:get("probability") then
-              viewport.frame = viewport.frame + 1
-    
               -- Audio engine out
               if params:get("out") == 1 or params:get("out") == 3 then
                 engine.noteOn(note_num, freq, 0.75)
@@ -364,7 +362,7 @@ function init()
     table.insert(options.SCALE_NAMES, string.lower(MusicUtil.SCALES[i].name))
   end
 
-  -- start clock tempo
+  -- start clock tempo and watch it for changes
   params:set("clock_tempo", 100)
 
   build_midi_device_list()
@@ -387,6 +385,21 @@ function init()
 
   -- store initial preset
   store_synth_preset()
+  
+  -- powers cool wave based on bpm
+  wavetimer = metro.init()
+  set_wave_time()
+  wavetimer.event = function()
+    viewport.frame = viewport.frame + 1
+    redraw()
+  end
+  wavetimer:start()
+end
+
+function set_wave_time()
+  if wavetimer then
+    wavetimer.time = 1.0 / util.clamp((params:get('clock_tempo') * params:get('step_div')) / 10, 10, 40)
+  end
 end
 
 function entry_step()
@@ -495,6 +508,10 @@ function init_params()
   MollyThePoly.add_params()
 
   params:add_separator()
+  
+  -- add params actions for tempo and step div
+  params:set_action("clock_tempo", set_wave_time)
+  params:set_action("step_div", set_wave_time)
 end
 
 function enc(n, delta)
