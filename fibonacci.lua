@@ -6,16 +6,18 @@
 -- K1 toggles loop mode
 -- K2 pauses/plays
 -- K3 resets number
+-- E2 travel through synth presets
+-- E3 control sub osc
+--
+-- LOOP MODE
+-- E2 loop start
+-- E3 loop size
 --
 -- SETTINGS
 -- E1 change page
 -- K2/K3 toggle settings
 -- E2 change first setting
 -- E3 change second setting
---
--- LOOP MODE
--- E2 loop start
--- E3 loop size
 
 local MollyThePoly = require "molly_the_poly/lib/molly_the_poly_engine"
 engine.name = "MollyThePoly"
@@ -65,10 +67,67 @@ local NUM_SND_PARAMS = #snd_params
 local notes_off_metro = metro.init()
 
 local random_sound_types = {"lead", "pad", "percussion"}
+local current_preset = 1
+local synth_presets = {}
 
-function generate_synth_preset()
-  local sound_type = random_sound_types[params:get("random_sound_type")]
+local viewport = { width = 128, height = 64, frame = 0 }
+ wavetimer = false
+
+function generate_synth_preset(t)
+  local sound_type = t or random_sound_types[params:get("random_sound_type")]
   MollyThePoly.randomize_params(sound_type)
+end
+
+local function store_synth_preset()
+  local param_names = {
+    "osc_wave_shape",
+    "pulse_width_mod",
+    "pulse_width_mod_src",
+    "freq_mod_lfo",
+    "freq_mod_env",
+    "glide",
+    "main_osc_level",
+    "sub_osc_level",
+    "sub_osc_detune",
+    "noise_level",
+    "hp_filter_cutoff",
+    "lp_filter_cutoff",
+    "lp_filter_resonance",
+    "lp_filter_type",
+    "lp_filter_env",
+    "lp_filter_mod_env",
+    "lp_filter_mod_lfo",
+    "lp_filter_tracking",
+    "lfo_freq",
+    "lfo_wave_shape",
+    "lfo_fade",
+    "env_1_attack",
+    "env_1_decay",
+    "env_1_sustain",
+    "env_1_release",
+    "env_2_attack",
+    "env_2_decay",
+    "env_2_sustain",
+    "env_2_release",
+    "amp",
+    "amp_mod",
+    "ring_mod_freq",
+    "ring_mod_fade",
+    "ring_mod_mix",
+    "chorus_mix",
+  }
+  
+  synth_presets[current_preset] = {}
+  synth_presets[current_preset].preset = {}
+  for _, v in pairs(param_names) do
+    synth_presets[current_preset].preset[v] = params:get(v)
+  end
+end
+
+local function switch_synth_preset()
+  for k, v in pairs(synth_presets[current_preset].preset) do
+    params:set(k, v)
+  end
 end
 
 function build_scale()
@@ -303,7 +362,7 @@ function init()
     table.insert(options.SCALE_NAMES, string.lower(MusicUtil.SCALES[i].name))
   end
 
-  -- start clock tempo
+  -- start clock tempo and watch it for changes
   params:set("clock_tempo", 100)
 
   build_midi_device_list()
@@ -323,6 +382,24 @@ function init()
 
   -- entry load
   entry_clock = clock.run(entry_step)
+
+  -- store initial preset
+  store_synth_preset()
+  
+  -- powers cool wave based on bpm
+  wavetimer = metro.init()
+  set_wave_time()
+  wavetimer.event = function()
+    viewport.frame = viewport.frame + 1
+    redraw()
+  end
+  wavetimer:start()
+end
+
+function set_wave_time()
+  if wavetimer then
+    wavetimer.time = 1.0 / util.clamp((params:get('clock_tempo') * params:get('step_div')) / 10, 10, 40)
+  end
 end
 
 function entry_step()
@@ -431,6 +508,10 @@ function init_params()
   MollyThePoly.add_params()
 
   params:add_separator()
+  
+  -- add params actions for tempo and step div
+  params:set_action("clock_tempo", set_wave_time)
+  params:set_action("step_div", set_wave_time)
 end
 
 function enc(n, delta)
@@ -443,6 +524,23 @@ function enc(n, delta)
         params:delta('loop_start', delta)
       elseif n==3 then
         params:delta('loop_size', delta)
+      end
+    else
+      if n==2 then
+        current_preset = util.clamp(current_preset + delta, 1, 256)
+        if synth_presets[current_preset] then 
+          switch_synth_preset()
+        else
+          -- percussion every so often (and pads?)
+          if math.random(1,10) > 8 then
+            generate_synth_preset('percussion')
+          else
+            generate_synth_preset()
+          end
+          store_synth_preset()
+        end
+      elseif n==3 then
+        params:delta('sub_osc_level', delta)
       end
     end
   elseif mode == 2 then -- pattern
@@ -520,7 +618,7 @@ function redraw()
     screen.move(90, 32)
     screen.font_size(8)
     screen.font_face(15)
-    screen.text('v0.5')
+    screen.text('v0.8')
     
     screen.level(3)
     screen.rect(15, 40, 100, 5)
@@ -607,6 +705,8 @@ function redraw()
 
     -- previous numbers
     if mode == 1 then
+      
+      --[[
       screen.font_size(7)
       screen.font_face(7)
       screen.level(2)
@@ -622,17 +722,74 @@ function redraw()
 
       -- current number
       screen.move(0, 37)
+      --]]
+
+      screen.move(0, 10)
+      screen.level(1)
       screen.font_size(9)
       screen.font_face(7)
-
+      
+      local previous_number_start = 1
+      local text_width = 0
+      local line_number = 1
+      
+      
+      local lines_to_write = {{}}
+      for i=1,current_number-1 do
+        -- operator based on it being the second last number
+        local operator = i < current_number-1 and '+' or '='
+        local text_to_write = numbers[i]..operator
+        
+        text_width = text_width + screen.text_extents(text_to_write)
+      
+        local current_line = text_width
+        
+        if i == current_number-1 then
+          current_line = current_line + screen.text_extents(numbers[current_number])
+        end
+        
+        if current_line > 120 then
+          text_width = 0
+          line_number = line_number + 1
+          lines_to_write[line_number] = {}
+        end
+        
+        table.insert(lines_to_write[line_number], text_to_write)
+      end
+      
+      -- handle paginating if lots of lines
+      if #lines_to_write > 4 then
+        for i=1,#lines_to_write do
+          lines_to_write[i] = lines_to_write[#lines_to_write-4+i]
+        end
+      end
+    
+      -- go through each line
+      for i=1,util.clamp(#lines_to_write, 1, 4) do
+        -- move new line
+        screen.move(0, 10*i)
+        last_line_total = 0
+        for n=1,#lines_to_write[i] do
+          -- write each number in the current line
+          screen.text(lines_to_write[i][n])
+          last_line_total = last_line_total + screen.text_extents(lines_to_write[i][n])
+        end
+      end
+      
+      -- if current number pushes over screen width go new line
+      
+      if (last_line_total + screen.text_extents(numbers[current_number])) > 120 then
+        screen.move(0, util.clamp(#lines_to_write*10, 10, 40) + 10)
+      end
+      
+      -- output current number with highlighting
       local number_playing = numbers[current_number]
-
       for i=1,string.len(number_playing) do
         local number_part_playing = tonumber(string.sub(number_playing, i, i))
         if i == current_number_part then
             screen.level(15)
         else
-            screen.level(1)
+            screen.level(3)
         end
         screen.text(number_part_playing)
 
@@ -645,9 +802,14 @@ function redraw()
             --screen.move(50, 42)
         end
       end
+      
+      screen.move(0, 55)
+      screen.line(128, 55)
+      screen.level(2)
+      screen.stroke()
 
       -- loop mode
-      screen.move(0, 58)
+      screen.move(0, 63)
       screen.font_size(7)
       if loop_mode_on then
         screen.level(5)
@@ -658,32 +820,30 @@ function redraw()
         limit = limit > #numbers and #numbers or limit
         screen.text(numbers[limit])
       else
-        --[[
         screen.font_face(1)
         screen.font_size(8)
         screen.level(15)
         screen.text("K1")
         screen.level(1)
         screen.text(" HOLD TO LOOP")
-        ]]--
       end
-    end
-
-    for i=1,10 do
-      local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
-      number_to_play = number_to_play == 0 and 10 or number_to_play
-      local light = number_to_play == i and 15 or 2
-      draw_cube(100 + (i > 5 and 10 or 0), 0+((i > 5 and i - 5 or i)*10), light)
+      
+      -- current preset sound
+      screen.move(128, 63)
+      screen.text_right(current_preset)
+      
+      -- wave based on tempo
+      local starting_point = 128 - screen.text_extents(current_preset) - 8
+      for i = starting_point-15,starting_point do
+        x = i
+        y = 65 - ((math.sin((viewport.frame+i)/3) * 3) + 5)
+        screen.pixel(x,y)
+      end
+      screen.fill()
     end
   end
 
   screen.update()
-end
-
-function draw_cube(m, n, light)
-  screen.rect(m, n, 6, 6) -- (x,y,width,height)
-  screen.level(light)
-  screen.stroke()
 end
 
 function cleanup()
