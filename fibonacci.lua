@@ -833,7 +833,7 @@ function redraw()
       screen.text_right(current_preset)
       
       -- wave based on tempo
-      local starting_point = 128 - screen.text_extents(current_preset) - 10
+      local starting_point = 128 - screen.text_extents(current_preset) - 8
       for i = starting_point-15,starting_point do
         x = i
         y = 65 - ((math.sin((viewport.frame+i)/3) * 3) + 5)
