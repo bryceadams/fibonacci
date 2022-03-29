@@ -387,7 +387,7 @@ function init()
   
   -- powers cool wave
   re = metro.init()
-  re.time = 1.0 / 15
+  re.time = 1.0 / util.clamp(tonumber(params:get('clock_tempo') / 5), 15, 20)
   re.event = function()
     viewport.frame = viewport.frame + 1
     redraw()
@@ -820,7 +820,6 @@ function redraw()
       screen.move(128, 63)
       screen.text_right(current_preset)
       
-          
       local starting_point = 128 - screen.text_extents(current_preset) - 10
       for i = starting_point-15,starting_point do
         x = i
@@ -829,24 +828,9 @@ function redraw()
       end
       screen.fill()
     end
-
-    --[[
-    for i=1,10 do
-      local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
-      number_to_play = number_to_play == 0 and 10 or number_to_play
-      local light = number_to_play == i and 15 or 2
-      draw_cube(100 + (i > 5 and 10 or 0), 0+((i > 5 and i - 5 or i)*10), light)
-    end
-    ]]--
   end
 
   screen.update()
-end
-
-function draw_cube(m, n, light)
-  screen.rect(m, n, 6, 6) -- (x,y,width,height)
-  screen.level(light)
-  screen.stroke()
 end
 
 function cleanup()
