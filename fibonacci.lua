@@ -68,7 +68,9 @@ local notes_off_metro = metro.init()
 
 local random_sound_types = {"lead", "pad", "percussion"}
 local current_preset = 1
- synth_presets = {}
+local synth_presets = {}
+
+local viewport = { width = 128, height = 64, frame = 0 }
 
 function generate_synth_preset(t)
   local sound_type = t or random_sound_types[params:get("random_sound_type")]
@@ -382,6 +384,15 @@ function init()
 
   -- store initial preset
   store_synth_preset()
+  
+  -- powers cool wave
+  re = metro.init()
+  re.time = 1.0 / 15
+  re.event = function()
+    viewport.frame = viewport.frame + 1
+    redraw()
+  end
+  re:start()
 end
 
 function entry_step()
@@ -736,14 +747,14 @@ function redraw()
       end
       
       -- handle paginating if lots of lines
-      if #lines_to_write > 5 then
+      if #lines_to_write > 4 then
         for i=1,#lines_to_write do
-          lines_to_write[i] = lines_to_write[#lines_to_write-5+i]
+          lines_to_write[i] = lines_to_write[#lines_to_write-4+i]
         end
       end
     
       -- go through each line
-      for i=1,util.clamp(#lines_to_write, 1, 5) do
+      for i=1,util.clamp(#lines_to_write, 1, 4) do
         -- move new line
         screen.move(0, 10*i)
         last_line_total = 0
@@ -757,7 +768,7 @@ function redraw()
       -- if current number pushes over screen width go new line
       
       if (last_line_total + screen.text_extents(numbers[current_number])) > 120 then
-        screen.move(0, util.clamp(#lines_to_write*10, 10, 50) + 10)
+        screen.move(0, util.clamp(#lines_to_write*10, 10, 40) + 10)
       end
       
       -- output current number with highlighting
@@ -780,9 +791,14 @@ function redraw()
             --screen.move(50, 42)
         end
       end
+      
+      screen.move(0, 55)
+      screen.line(128, 55)
+      screen.level(2)
+      screen.stroke()
 
       -- loop mode
-      screen.move(0, 58)
+      screen.move(0, 63)
       screen.font_size(7)
       if loop_mode_on then
         screen.level(5)
@@ -793,15 +809,25 @@ function redraw()
         limit = limit > #numbers and #numbers or limit
         screen.text(numbers[limit])
       else
-        --[[
         screen.font_face(1)
         screen.font_size(8)
         screen.level(15)
         screen.text("K1")
         screen.level(1)
         screen.text(" HOLD TO LOOP")
-        ]]--
       end
+      
+      screen.move(128, 63)
+      screen.text_right(current_preset)
+      
+          
+      local starting_point = 128 - screen.text_extents(current_preset) - 10
+      for i = starting_point-15,starting_point do
+        x = i
+        y = 64 - ((math.sin((viewport.frame+i)/3) * 3) + 5)
+        screen.pixel(x,y)
+      end
+      screen.fill()
     end
 
     --[[
