@@ -618,7 +618,7 @@ function redraw()
     screen.move(90, 32)
     screen.font_size(8)
     screen.font_face(15)
-    screen.text('v0.5')
+    screen.text('v0.8')
     
     screen.level(3)
     screen.rect(15, 40, 100, 5)
