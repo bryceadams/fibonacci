@@ -683,6 +683,8 @@ function redraw()
 
     -- previous numbers
     if mode == 1 then
+      
+      --[[
       screen.font_size(7)
       screen.font_face(7)
       screen.level(2)
@@ -698,9 +700,63 @@ function redraw()
 
       -- current number
       screen.move(0, 37)
+      --]]
+
+      screen.move(0, 10)
+      screen.level(1)
       screen.font_size(9)
       screen.font_face(7)
-
+      
+      local previous_number_start = 1
+      local text_width = 0
+      local line_number = 1
+      
+      
+       lines_to_write = {{}}
+      for i=1,current_number-1 do
+        
+        
+        
+        local operator = i < current_number-1 and '+' or '='
+        local text_to_write = numbers[i]..operator
+        
+        text_width = text_width + screen.text_extents(text_to_write)
+      
+        local current_line = text_width
+        
+        if i == current_number-1 then
+          current_line = current_line + screen.text_extents(numbers[current_number])
+        end
+        
+        if current_line > 120 then
+          text_width = 0
+          line_number = line_number + 1
+          lines_to_write[line_number] = {}
+          --screen.move(0, 10*line_number)
+        end
+        
+        table.insert(lines_to_write[line_number], text_to_write)
+        
+        --screen.text(text_to_write)
+      end
+      
+      if #lines_to_write > 6 then
+        for i=1,#lines_to_write do
+          lines_to_write[i] = lines_to_write[#lines_to_write-6+i]
+        end
+      end
+    
+      for i=1,util.clamp(#lines_to_write, 1, 6) do
+        -- move new line
+        
+        --local y = i+10*i
+        --print(i)
+        screen.move(0, 10*i)
+        for n=1,#lines_to_write[i] do
+          screen.text(lines_to_write[i][n])
+        end
+      end
+      
       local number_playing = numbers[current_number]
 
       for i=1,string.len(number_playing) do
@@ -708,7 +764,7 @@ function redraw()
         if i == current_number_part then
             screen.level(15)
         else
-            screen.level(1)
+            screen.level(3)
         end
         screen.text(number_part_playing)
 
@@ -745,12 +801,14 @@ function redraw()
       end
     end
 
+    --[[
     for i=1,10 do
       local number_to_play = tonumber(string.sub(numbers[current_number], current_number_part, current_number_part))
       number_to_play = number_to_play == 0 and 10 or number_to_play
       local light = number_to_play == i and 15 or 2
       draw_cube(100 + (i > 5 and 10 or 0), 0+((i > 5 and i - 5 or i)*10), light)
     end
+    ]]--
   end
 
   screen.update()
