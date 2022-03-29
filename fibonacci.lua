@@ -828,13 +828,15 @@ function redraw()
         screen.text(" HOLD TO LOOP")
       end
       
+      -- current preset sound
       screen.move(128, 63)
       screen.text_right(current_preset)
       
+      -- wave based on tempo
       local starting_point = 128 - screen.text_extents(current_preset) - 10
       for i = starting_point-15,starting_point do
         x = i
-        y = 64 - ((math.sin((viewport.frame+i)/3) * 3) + 5)
+        y = 65 - ((math.sin((viewport.frame+i)/3) * 3) + 5)
         screen.pixel(x,y)
       end
       screen.fill()
