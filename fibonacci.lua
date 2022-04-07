@@ -1,5 +1,5 @@
 -- fibonacci
--- v0.8 @obi
+-- v0.9 @obi
 -- inspirations and source @tehn @markwheeler
 --
 -- HOME
@@ -138,15 +138,17 @@ function build_scale()
   end
 end
 
-function all_notes_off()
+function all_notes_off(all)
+  all = all or false
+
   -- Audio engine out
-  if params:get("out") == 1 then
+  if all or (params:get("out") == 1 or params:get("out") == 3) then
     for _, a in pairs(active_notes) do
       engine.noteOff(a)
     end
   end
 
-  if (params:get("out") == 2 or params:get("out") == 3) then
+  if all or (params:get("out") == 2 or params:get("out") == 3) then
     for _, a in pairs(active_notes) do
       midi_device:note_off(a, nil, midi_channel)
     end
@@ -422,7 +424,9 @@ function init_params()
   params:add{type = "option", id = "out", name = "out",
     options = options.OUT,
     action = function(value)
-      all_notes_off()
+      -- all true so it forces notes off
+      all_notes_off(true)
+      
       if value == 4 then crow.output[2].action = "{to(5,0),to(0,0.25)}"
       elseif value == 5 then
         crow.ii.pullup(true)
@@ -618,7 +622,7 @@ function redraw()
     screen.move(90, 32)
     screen.font_size(8)
     screen.font_face(15)
-    screen.text('v0.8')
+    screen.text('v0.9')
     
     screen.level(3)
     screen.rect(15, 40, 100, 5)
