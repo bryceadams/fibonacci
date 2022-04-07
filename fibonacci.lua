@@ -29,6 +29,7 @@ local MusicUtil = require "musicutil"
 local options = {}
 options.OUT = {"audio", "midi", "audio + midi", "crow out 1+2", "crow ii JF"}
 options.SCALE_NAMES = {}
+local out_method
 
 local running = true
 
@@ -43,6 +44,8 @@ local current_number_part = 1
 local midi_devices
 local midi_device
 local midi_channel
+local midi_in_device
+local midi_in_channel
 
 local notes = {}
 local active_notes = {}
@@ -337,7 +340,6 @@ end
 function midi_event(data)
   msg = midi.to_msg(data)
   if msg.type == "start" then
-      clock.transport.reset()
       clock.transport.start()
   elseif msg.type == "continue" then
     if running then
@@ -348,6 +350,14 @@ function midi_event(data)
   end
   if msg.type == "stop" then
     clock.transport.stop()
+  end
+
+  -- midi in handling for root changes but only if out not midi or different midi
+  if msg.ch == midi_in_channel and 
+    (out_method == 1 or (midi_in_device ~= midi_device)) then
+    if msg.type == "note_on" then
+      params:set("root_note", msg.note)
+    end
   end
 end
 
@@ -372,14 +382,15 @@ function init()
   build_numbers()
 
   notes_off_metro.event = all_notes_off
-
-  init_params()
   
+  midi_in_device = midi.connect(1)
+  midi_in_device.event = midi_event
+
   hs.init()
 
+  init_params()
   params:default()
-  midi_device.event = midi_event
-
+  
   norns.enc.sens(1,12)
   clock.run(step)
 
@@ -421,10 +432,12 @@ function init_params()
 
   params:add_separator("fibonacci")
 
-  params:add_group("outs",3)
+  params:add_group("ins + outs",5)
   params:add{type = "option", id = "out", name = "out",
     options = options.OUT,
     action = function(value)
+      out_method = value
+      
       -- all true so it forces notes off
       all_notes_off(true)
       
@@ -443,6 +456,19 @@ function init_params()
     action = function(value)
       all_notes_off()
       midi_channel = value
+    end}
+  
+  params:add{type = "option", id = "midi_in_device", name = "midi in device", min = 1, max = 4, default = 1,
+    options = midi_devices,
+    action = function(value)
+      midi_in_device.event = nil
+      midi_in_device = midi.connect(value)
+      midi_in_device.event = midi_event
+    end}
+  
+  params:add{type = "number", id = "midi_in_channel", name = "midi in channel", min = 1, max = 16, default = 1,
+    action = function(value)
+      midi_in_channel = value
     end}
 
   params:add_group("step",9)
@@ -539,7 +565,7 @@ function enc(n, delta)
       if n==2 then
         -- store the current one first
         store_synth_preset()
-        
+
         current_preset = util.clamp(current_preset + delta, 1, 256)
         if synth_presets[current_preset] then 
           switch_synth_preset()
