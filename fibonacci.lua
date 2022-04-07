@@ -69,6 +69,7 @@ local notes_off_metro = metro.init()
 local random_sound_types = {"lead", "pad", "percussion"}
 local current_preset = 1
 local synth_presets = {}
+local generate_confirmed = false
 
 local viewport = { width = 128, height = 64, frame = 0 }
  wavetimer = false
@@ -519,6 +520,11 @@ function init_params()
 end
 
 function enc(n, delta)
+  -- turn off generate confirmed if anything but confirm
+  if generate_confirmed then
+    generate_confirmed = false
+  end
+  
   if n==1 then
     -- change mode for pattern/sound
     mode = util.clamp(mode+delta,1,3)
@@ -565,38 +571,48 @@ end
 
 function key(n,z)
     if z==1 then
-        if mode == 1 then
-          if n==1 then
-            loop_mode_on = not loop_mode_on
-            if loop_mode_on then
-              params:set('loop_start', current_number)
-            end
-          elseif n==2 then
-            if running then
-              stop()
-            else
-              start()
-            end
-          elseif n==3 then
-            reset()
+      -- turn off generate confirmed if anything but confirm
+      if generate_confirmed and n ~= 2 then
+        generate_confirmed = false
+      end
+      
+      if mode == 1 then
+        if n==1 then
+          loop_mode_on = not loop_mode_on
+          if loop_mode_on then
+            params:set('loop_start', current_number)
           end
-        elseif mode == 2 then
-            if n==2 then
-                main_sel = util.clamp(main_sel - 2,1,NUM_MAIN_PARAMS-1)
-            elseif n==3 then
-                main_sel = util.clamp(main_sel + 2,1,NUM_MAIN_PARAMS-1)
-            end
-        elseif mode == 3 then
-            if n==2 then
-                if snd_sel == 1 then
-                  generate_synth_preset()
-                else
-                  snd_sel = util.clamp(snd_sel - 2,1,NUM_SND_PARAMS-1)
-                end
-            elseif n==3 then
-                snd_sel = util.clamp(snd_sel + 2,1,NUM_SND_PARAMS-1)
-            end
+        elseif n==2 then
+          if running then
+            stop()
+          else
+            start()
+          end
+        elseif n==3 then
+          reset()
         end
+      elseif mode == 2 then
+          if n==2 then
+              main_sel = util.clamp(main_sel - 2,1,NUM_MAIN_PARAMS-1)
+          elseif n==3 then
+              main_sel = util.clamp(main_sel + 2,1,NUM_MAIN_PARAMS-1)
+          end
+      elseif mode == 3 then
+          if n==2 then
+              if snd_sel == 1 then
+                if generate_confirmed then
+                  generate_synth_preset()
+                  generate_confirmed = false
+                else
+                  generate_confirmed = true
+                end
+              else
+                snd_sel = util.clamp(snd_sel - 2,1,NUM_SND_PARAMS-1)
+              end
+          elseif n==3 then
+              snd_sel = util.clamp(snd_sel + 2,1,NUM_SND_PARAMS-1)
+          end
+      end
     end
 
     redraw()
@@ -701,7 +717,11 @@ function redraw()
       screen.level(15)
       screen.move(0,60)
       if snd_params[snd_sel+1] == 'generate_preset' then
-        screen.text('press k2')
+        if generate_confirmed then
+          screen.text('sure?')
+        else
+          screen.text('press k2')
+        end
       else
         screen.text(params:string(snd_params[snd_sel+1]))
       end
