@@ -537,6 +537,9 @@ function enc(n, delta)
       end
     else
       if n==2 then
+        -- store the current one first
+        store_synth_preset()
+        
         current_preset = util.clamp(current_preset + delta, 1, 256)
         if synth_presets[current_preset] then 
           switch_synth_preset()
